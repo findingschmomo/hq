@@ -17,6 +17,7 @@
  *               BRIDGE_MIRROR_MS (30000), HERMES_BIN (default "hermes").
  */
 import pg from "pg";
+import { spawn } from "node:child_process";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
@@ -24,6 +25,29 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
+// NB: promisified execFile waits for stdio streams to CLOSE, which never
+// happens if a grandchild process outlives the killed child while holding
+// the pipes. That wedged the whole bridge once. So: spawn manually and
+// force-settle on timeout, pipes be damned.
+function hermes(args, { timeout = 30000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(HERMES, args, { stdio: ["ignore", "pipe", "pipe"] });
+    let stdout = "";
+    let settled = false;
+    const finish = (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { child.kill("SIGKILL"); } catch { /* already gone */ }
+      if (err) reject(err); else resolve(stdout);
+    };
+    const timer = setTimeout(() => finish(new Error(`hermes timed out after ${timeout}ms: ${HERMES} ${args.join(" ")}`)), timeout);
+    child.stdout.on("data", (d) => { stdout += d; });
+    child.stderr.on("data", () => { /* drain */ });
+    child.on("error", finish);
+    child.on("close", () => finish());
+  });
+}
 const execFileP = promisify(execFile);
 const HERMES = process.env.HERMES_BIN || "hermes";
 const BOARD = process.env.HERMES_BOARD || "default";
@@ -53,11 +77,6 @@ const pool = new pg.Pool({ connectionString: DB_URL, max: 4, ssl: isLocal ? unde
 
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 const q = (text, params) => pool.query(text, params);
-
-async function hermes(args, { timeout = 30000 } = {}) {
-  const { stdout } = await execFileP(HERMES, args, { timeout, maxBuffer: 8 * 1024 * 1024 });
-  return stdout;
-}
 
 async function emit(kind, title, { detail = null, agent = "hermes", level = "info", meta = null } = {}) {
   await q(
@@ -301,11 +320,19 @@ async function mirrorTick() {
 
 async function main() {
   log(`hermes-bridge up · board=${BOARD} · poll=${POLL_MS}ms · mirror=${MIRROR_MS}ms`);
-  await emit("status", "Bridge connected", { level: "up" });
-  await mirrorTick();
-  setInterval(() => mirrorTick().catch((e) => log("mirror loop", e.message)), MIRROR_MS);
+  emit("status", "Bridge connected", { level: "up" }).catch((e) => log("emit err", e.message));
+  // Register loops FIRST — never block them behind a slow mirror pass
+  // (the daily brief can legitimately run for minutes).
+  let mirroring = false;
+  setInterval(() => {
+    if (mirroring) return; // skip if previous pass still running
+    mirroring = true;
+    mirrorTick().catch((e) => log("mirror loop", e.message)).finally(() => { mirroring = false; });
+  }, MIRROR_MS);
   // queue loop
   const tick = async () => { try { await processQueue(); } catch (e) { log("queue loop", e.message); } finally { setTimeout(tick, POLL_MS); } };
   tick();
+  // initial pass in the background so data shows up quickly after boot
+  mirrorTick().catch((e) => log("initial mirror", e.message));
 }
 main().catch((e) => { console.error("fatal", e); process.exit(1); });

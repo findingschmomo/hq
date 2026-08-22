@@ -777,9 +777,9 @@ export default function HermesPage() {
   }, []);
 
   useEffect(() => {
-    load();
+    const first = requestAnimationFrame(load);
     const iv = setInterval(load, 8000);
-    return () => clearInterval(iv);
+    return () => { cancelAnimationFrame(first); clearInterval(iv); };
   }, [load]);
 
   const manualRefresh = async () => {

@@ -4,7 +4,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   Fragment,
 } from "react";
@@ -663,9 +662,9 @@ export default function MemoryWikiPage() {
 
   // Reload on filter change + poll every 10s
   useEffect(() => {
-    load();
+    const first = requestAnimationFrame(load);
     const iv = setInterval(load, 10000);
-    return () => clearInterval(iv);
+    return () => { cancelAnimationFrame(first); clearInterval(iv); };
   }, [load]);
 
   const chips = useMemo(() => {

@@ -11,7 +11,11 @@ function useCountUp(target: number, duration = 1400, enabled = true) {
   useEffect(() => {
     const reduce = typeof window !== "undefined"
       && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (!enabled || target === 0 || reduce) { setVal(target); return; }
+    if (!enabled || target === 0 || reduce) {
+      // defer past paint — avoids cascading render warnings
+      raf.current = requestAnimationFrame(() => setVal(target));
+      return () => { if (raf.current) cancelAnimationFrame(raf.current); };
+    }
     const start = Date.now();
     const tick = () => {
       const t = Math.min((Date.now() - start) / duration, 1);
@@ -44,12 +48,14 @@ export interface MetricCardProps {
   href?: string;
   loaded?: boolean;
   className?: string;
+  /** Small static caption shown under the value. */
+  sub?: string;
 }
 
 export function MetricCard({
   label, value, format = (n) => n.toLocaleString("en-US"),
   delta = null, deltaPct = null, deltaLabel, trend, goal, goalFormat,
-  icon, accent = "#a1a1aa", href, loaded = true, className = "",
+  icon, accent = "#a1a1aa", href, loaded = true, className = "", sub,
 }: MetricCardProps) {
   const counted = useCountUp(value, 1600, loaded);
 
@@ -111,8 +117,8 @@ export function MetricCard({
         </div>
       )}
 
-      {pct === null && deltaLabel && (
-        <div className="mt-auto pt-3 text-[11px] num text-[var(--hq-text-ghost)]">{deltaLabel}</div>
+      {pct === null && (deltaLabel || sub) && (
+        <div className="mt-auto pt-3 text-[11px] num text-[var(--hq-text-ghost)]">{deltaLabel ?? sub}</div>
       )}
     </div>
   );

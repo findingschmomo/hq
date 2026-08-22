@@ -59,9 +59,9 @@ export function HermesDispatches() {
   }, []);
 
   useEffect(() => {
-    load();
+    const first = requestAnimationFrame(load);
     const iv = setInterval(load, 5000);
-    return () => clearInterval(iv);
+    return () => { cancelAnimationFrame(first); clearInterval(iv); };
   }, [load]);
 
   return (

@@ -51,9 +51,19 @@ environment variables.
 ## Features
 
 **Cockpit**
-- Dashboard home with an at-a-glance view of the agent, tasks, and the day
+- Dashboard home with an at-a-glance view of email, KPIs, relationships, and the agent
 - ⌘K command palette to jump anywhere or fire an action
 - Chief-of-Staff daily brief, generated on a schedule
+
+**Director's tools**
+- **Email Triage** (`/email-triage`) — log, categorize, prioritize, and track every
+  inbound email through triage → in progress → waiting → done
+- **KPI Database** (`/kpis`) — define the metrics that matter (programs, fundraising,
+  operations), set targets, record readings, and see on/off-track status with trends
+- **Stakeholders** (`/stakeholders`) — directory of board members, funders, partners,
+  staff, and officials with a full interaction log, follow-up flags, and contact cadence
+  reminders
+- Tasks board and Ideas capture
 
 **Hermes control hub** (`/hermes`)
 - Dispatch one-shot prompts or kanban tasks to the agent
@@ -63,16 +73,6 @@ environment variables.
 
 **Memory**
 - Memory Wiki — browse and edit the agent's memory (facts, notes, links) as a wiki
-
-**Work & content**
-- Tasks and Ideas boards
-- Content OS — an X / Twitter content pipeline (drafts, scoring, scheduling)
-- Longform + YouTube script studios
-- Client Pulse — a client-health tracking board (bring your own data ingestion)
-- Agents roster, Garden, and Watchlist Radar
-
-> Some features need your own API keys (YouTube, X/Twitter, OpenAI, etc.). They are
-> all optional and configured via env — the core dashboard runs without them.
 
 ---
 
@@ -126,7 +126,6 @@ access to Postgres and your local `hermes` CLI. See
 - **Styling:** Tailwind CSS v4
 - **Data:** Prisma ORM + PostgreSQL
 - **Auth:** NextAuth with Google login (email allowlist)
-- **Charts / DnD:** Recharts, react-dnd
 - **Deploy:** Vercel (website) + launchd/systemd (bridge)
 - **Agent:** [Hermes](https://github.com/NousResearch/hermes-agent) `hermes` CLI
 
@@ -220,8 +219,8 @@ systemd (Linux) — full instructions in
 ## Project layout
 
 ```
-src/            Next.js App Router (dashboard, /hermes, memory-wiki, content-os, …)
-prisma/         schema.prisma (message-bus + feature models)
+src/            Next.js App Router (dashboard, email-triage, kpis, stakeholders, hermes, …)
+prisma/         schema.prisma (message-bus + director's-tool models)
 hermes-bridge/  the bridge that runs on your machine next to Hermes
 .env.example    every env var, documented
 ONBOARDING.md   copy-paste prompt to have your Hermes install this for you

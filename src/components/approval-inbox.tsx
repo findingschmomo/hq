@@ -220,9 +220,9 @@ export function ApprovalInbox({ compact = false }: { compact?: boolean }) {
   }, []);
 
   useEffect(() => {
-    load();
+    const first = requestAnimationFrame(load);
     const iv = setInterval(load, 6000);
-    return () => clearInterval(iv);
+    return () => { cancelAnimationFrame(first); clearInterval(iv); };
   }, [load]);
 
   // optimistic removal, then refetch to reconcile

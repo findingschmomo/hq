@@ -398,10 +398,11 @@ export function HermesRuns() {
 
   useEffect(() => {
     mounted.current = true;
-    load();
+    const first = requestAnimationFrame(load);
     const iv = setInterval(load, 8000);
     return () => {
       mounted.current = false;
+      cancelAnimationFrame(first);
       clearInterval(iv);
     };
   }, [load]);

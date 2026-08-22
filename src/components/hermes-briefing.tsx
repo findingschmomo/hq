@@ -60,9 +60,9 @@ export function HermesBriefing() {
   }, [generating]);
 
   useEffect(() => {
-    load();
+    const first = requestAnimationFrame(load);
     const iv = setInterval(load, generating ? 6000 : 20000);
-    return () => clearInterval(iv);
+    return () => { cancelAnimationFrame(first); clearInterval(iv); };
   }, [load, generating]);
 
   const generate = async () => {

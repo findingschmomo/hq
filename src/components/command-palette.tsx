@@ -10,15 +10,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
-  Twitter,
-  FileText,
-  Youtube,
-  Activity,
-  Bot,
+  Inbox,
+  BarChart3,
+  Users,
   Lightbulb,
-  Sprout,
   ListChecks,
   Sparkles,
+  BookOpen,
   CornerDownLeft,
   Search,
   Check,
@@ -33,15 +31,13 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "X", href: "/x", icon: Twitter },
-  { label: "Articles", href: "/articles", icon: FileText },
-  { label: "YouTube", href: "/youtube", icon: Youtube },
-  { label: "Client Pulse", href: "/client-pulse", icon: Activity },
-  { label: "Agents", href: "/agents", icon: Bot },
-  { label: "Ideas", href: "/ideas", icon: Lightbulb },
-  { label: "Garden", href: "/garden", icon: Sprout },
+  { label: "Email Triage", href: "/email-triage", icon: Inbox },
+  { label: "KPIs", href: "/kpis", icon: BarChart3 },
+  { label: "Stakeholders", href: "/stakeholders", icon: Users },
   { label: "Tasks", href: "/tasks", icon: ListChecks },
+  { label: "Ideas", href: "/ideas", icon: Lightbulb },
   { label: "Hermes", href: "/hermes", icon: Sparkles },
+  { label: "Memory Wiki", href: "/memory-wiki", icon: BookOpen },
 ];
 
 type Row =
@@ -71,13 +67,15 @@ export function CommandPalette() {
 
   // ── reset + focus when opening ────────────────────────────
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    // reset + focus after paint so the trap works reliably
+    const id = requestAnimationFrame(() => {
       setQuery("");
       setActive(0);
       setDispatched(false);
-      // focus after paint so the trap works reliably
-      requestAnimationFrame(() => inputRef.current?.focus());
-    }
+      inputRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(id);
   }, [open]);
 
   // ── lock scroll while open ────────────────────────────────
@@ -107,10 +105,8 @@ export function CommandPalette() {
     return out;
   }, [navMatches, query]);
 
-  // keep highlight in range as rows shrink/grow
-  useEffect(() => {
-    setActive((a) => (rows.length === 0 ? 0 : Math.min(a, rows.length - 1)));
-  }, [rows.length]);
+  // keep the highlight in range as rows shrink/grow (derived, no effect needed)
+  const activeIdx = Math.min(active, Math.max(0, rows.length - 1));
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -165,16 +161,16 @@ export function CommandPalette() {
     }
     if (e.key === "Enter") {
       e.preventDefault();
-      run(rows[active]);
+      run(rows[activeIdx]);
     }
   };
 
   // scroll the active row into view
   useEffect(() => {
     if (!open || !listRef.current) return;
-    const el = listRef.current.querySelector<HTMLElement>(`[data-idx="${active}"]`);
+    const el = listRef.current.querySelector<HTMLElement>(`[data-idx="${activeIdx}"]`);
     el?.scrollIntoView({ block: "nearest" });
-  }, [active, open]);
+  }, [activeIdx, open]);
 
   if (!open) return null;
 
@@ -227,7 +223,7 @@ export function CommandPalette() {
                   <PaletteRow
                     key={r.item.href}
                     idx={idx}
-                    active={active === idx}
+                    active={activeIdx === idx}
                     onHover={() => setActive(idx)}
                     onSelect={() => run(r)}
                     icon={<r.item.icon className="w-4 h-4" />}
@@ -250,7 +246,7 @@ export function CommandPalette() {
                 return (
                   <PaletteRow
                     idx={idx}
-                    active={active === idx}
+                    active={activeIdx === idx}
                     onHover={() => setActive(idx)}
                     onSelect={() => run(dispatchRow)}
                     icon={

@@ -150,6 +150,7 @@ export function Button({
   href,
   type = "button",
   disabled,
+  title,
   className = "",
 }: {
   children: React.ReactNode;
@@ -159,15 +160,16 @@ export function Button({
   href?: string;
   type?: "button" | "submit";
   disabled?: boolean;
+  title?: string;
   className?: string;
 }) {
   const pad = size === "sm" ? "px-3 py-1.5 text-[12px]" : "px-4 py-2 text-[13px]";
   const cls = `inline-flex items-center justify-center gap-1.5 font-medium ${pad} ${
     variant === "primary" ? "btn-primary" : "btn-ghost"
   } ${disabled ? "opacity-40 pointer-events-none" : ""} ${className}`;
-  if (href) return <a href={href} className={cls}>{children}</a>;
+  if (href) return <a href={href} className={cls} title={title}>{children}</a>;
   return (
-    <button type={type} onClick={onClick} disabled={disabled} className={cls}>
+    <button type={type} onClick={onClick} disabled={disabled} title={title} className={cls}>
       {children}
     </button>
   );

@@ -56,8 +56,15 @@ environment variables.
 - Chief-of-Staff daily brief, generated on a schedule
 
 **Director's tools**
-- **Email Triage** (`/email-triage`) — log, categorize, prioritize, and track every
-  inbound email through triage → in progress → waiting → done
+- **Email Triage** (`/email-triage`) — pull recent Gmail into the board with one click,
+  let your Hermes agent auto-classify everything (category, priority, summary, next
+  action), and reply without leaving the dashboard. One-time setup:
+  1. In [Google Cloud Console](https://console.cloud.google.com), enable the **Gmail API**
+  2. On the OAuth consent screen add the scopes `gmail.readonly` and `gmail.send`
+     (and your own address as a Test User while the app is unverified)
+  3. Add `<your-url>/api/email-triage/google/callback` as an authorized redirect URI
+     on the same OAuth client used for login
+  4. Click **Connect Google** on the Email Triage page and grant access
 - **KPI Database** (`/kpis`) — define the metrics that matter (programs, fundraising,
   operations), set targets, record readings, and see on/off-track status with trends
 - **Stakeholders** (`/stakeholders`) — directory of board members, funders, partners,

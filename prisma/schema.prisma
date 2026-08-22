@@ -73,6 +73,10 @@ model EmailItem {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  // Gmail integration
+  gmailId     String?   @unique // Gmail message id (dedupes synced mail)
+  threadId    String?   // Gmail thread id (keeps replies in-thread)
+
   @@index([status])
   @@index([priority])
   @@index([receivedAt])

@@ -311,7 +311,7 @@ async function runRequest(r) {
       throw new Error(`unknown kind ${r.kind}`);
     }
     await q(`UPDATE "AgentRequest" SET status='done', result=$2, "finishedAt"=now(), "updatedAt"=now() WHERE id=$1`,
-      [r.id, result.slice(0, 8000)]);
+      [r.id, result.slice(0, 100_000)]);
     await emit("run", `Done: ${r.title}`, { level: "up", detail: result.slice(0, 400), meta: { requestId: r.id } });
   } catch (e) {
     const msg = (e.stderr || e.message || "error").toString().split("\n")[0].slice(0, 600);

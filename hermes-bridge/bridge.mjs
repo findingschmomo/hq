@@ -29,9 +29,9 @@ import os from "node:os";
 // happens if a grandchild process outlives the killed child while holding
 // the pipes. That wedged the whole bridge once. So: spawn manually and
 // force-settle on timeout, pipes be damned.
-function hermes(args, { timeout = 30000 } = {}) {
+function runCli(bin, args, { timeout = 30000, cwd } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(HERMES, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"], cwd });
     let stdout = "";
     let settled = false;
     const finish = (err) => {
@@ -39,9 +39,11 @@ function hermes(args, { timeout = 30000 } = {}) {
       settled = true;
       clearTimeout(timer);
       try { child.kill("SIGKILL"); } catch { /* already gone */ }
-      if (err) reject(err); else resolve(stdout);
+      // strip ANSI escapes some CLIs decorate output with
+      const clean = stdout.replace(/\x1b\[[0-9;]*m/g, "");
+      if (err) reject(err); else resolve(clean);
     };
-    const timer = setTimeout(() => finish(new Error(`hermes timed out after ${timeout}ms: ${HERMES} ${args.join(" ")}`)), timeout);
+    const timer = setTimeout(() => finish(new Error(`${bin} timed out after ${timeout}ms: ${args.join(" ")}`)), timeout);
     child.stdout.on("data", (d) => { stdout += d; });
     child.stderr.on("data", () => { /* drain */ });
     child.on("error", finish);
@@ -50,6 +52,24 @@ function hermes(args, { timeout = 30000 } = {}) {
 }
 const execFileP = promisify(execFile);
 const HERMES = process.env.HERMES_BIN || "hermes";
+// Optional second brain: kinds listed in OPENCODE_KINDS execute via
+// OpenCode instead of Hermes (e.g. "oneshot,briefing.generate").
+const OPENCODE_BIN = process.env.OPENCODE_BIN || "";
+const OPENCODE_KINDS = new Set((process.env.OPENCODE_KINDS || "").split(",").map((s) => s.trim()).filter(Boolean));
+const REPO_ROOT = path.join(import.meta.dirname, "..");
+const useOpencode = (kind) => Boolean(OPENCODE_BIN) && OPENCODE_KINDS.has(kind);
+// Free-form LLM prompts (triage, briefs) go through whichever brain owns them.
+function agentPrompt(prompt, kind, { timeout = 30000 } = {}) {
+  if (useOpencode(kind)) {
+    log(`executing via OpenCode (${kind})`);
+    // --auto: headless runs can't answer permission prompts; scoped
+    // external_directory allows in the user's opencode config keep this safe.
+    return runCli(OPENCODE_BIN, ["run", "--auto", prompt], { timeout, cwd: REPO_ROOT });
+  }
+  return runCli(HERMES, ["-z", prompt], { timeout });
+}
+// Hermes-specific CLI shape used by the mirrors (kanban/cron/status/insights).
+const hermes = (args, opts) => runCli(HERMES, args, opts);
 const BOARD = process.env.HERMES_BOARD || "default";
 const POLL_MS = Number(process.env.BRIDGE_POLL_MS || 5000);
 const MIRROR_MS = Number(process.env.BRIDGE_MIRROR_MS || 30000);
@@ -233,7 +253,7 @@ async function gitCommitWiki(msg) {
 
 /* ─────────────── Chief-of-staff daily brief ─────────────── */
 async function generateBriefing() {
-  const raw = (await hermes(["-z", BRIEF_PROMPT], { timeout: RUN_TIMEOUT_MS })).trim();
+  const raw = (await agentPrompt(BRIEF_PROMPT, "briefing.generate", { timeout: RUN_TIMEOUT_MS })).trim();
   let brief;
   try {
     const jsonStr = raw.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
@@ -260,7 +280,7 @@ async function runRequest(r) {
   try {
     let result = "";
     if (r.kind === "oneshot" || r.kind === "chat") {
-      result = (await hermes(["-z", r.prompt || r.title], { timeout: RUN_TIMEOUT_MS })).trim();
+      result = (await agentPrompt(r.prompt || r.title, r.kind, { timeout: RUN_TIMEOUT_MS })).trim();
     } else if (r.kind === "kanban") {
       result = (await hermes(["kanban", "--board", BOARD, "create", "--json", r.title], { timeout: 20000 })).trim();
     } else if (r.kind.startsWith("cron.")) {

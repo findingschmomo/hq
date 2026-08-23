@@ -14,7 +14,7 @@ export async function POST() {
   }
 
   try {
-    const messages = await listRecentInbox(25);
+    const messages = await listRecentInbox(500);
     let added = 0;
     let skipped = 0;
 

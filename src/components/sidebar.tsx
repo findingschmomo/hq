@@ -15,13 +15,14 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { AGENT_NAME } from "@/lib/agent-name";
 
 const navGroups = [
   {
     name: "Overview",
     items: [
       { href: "/", label: "Dashboard", icon: Home },
-      { href: "/hermes", label: "Hermes", icon: Cpu },
+      { href: "/hermes", label: AGENT_NAME, icon: Cpu },
       { href: "/tasks", label: "Tasks", icon: ClipboardList },
     ],
   },
@@ -48,7 +49,7 @@ const mobileTabsRaw = [
   { href: "/email-triage", label: "Inbox", icon: Inbox },
   { href: "/kpis", label: "KPIs", icon: BarChart3 },
   { href: "/stakeholders", label: "People", icon: Users },
-  { href: "/hermes", label: "Hermes", icon: Cpu },
+  { href: "/hermes", label: AGENT_NAME, icon: Cpu },
 ];
 
 function Logo() {

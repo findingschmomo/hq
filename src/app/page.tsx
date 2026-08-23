@@ -13,6 +13,7 @@ import {
   Phone,
   CalendarDays,
 } from "lucide-react";
+import { AGENT_NAME } from "@/lib/agent-name";
 import { MetricCard } from "@/components/ui/metric-card";
 import { HermesBriefing } from "@/components/hermes-briefing";
 import { ApprovalInbox } from "@/components/approval-inbox";
@@ -214,7 +215,7 @@ function HermesKanbanPanel({ kanban }: { kanban: HomeData["hermesKanban"] }) {
     <div className="panel flex flex-col p-6 h-full">
       <div className="flex items-center justify-between mb-4">
         <div className="min-w-0">
-          <span className="eyebrow">Hermes Board</span>
+          <span className="eyebrow">{AGENT_NAME} Board</span>
           <Link href="/hermes" className="text-[13px] text-[var(--hq-text-dim)] hover:text-[var(--hq-text)] truncate mt-1 inline-flex items-center gap-1 transition-colors">
             View hub <ArrowUpRight className="w-3 h-3" />
           </Link>

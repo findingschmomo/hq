@@ -15,6 +15,7 @@ import {
   EmptyState,
   Eyebrow,
 } from "@/components/ui/kit";
+import { AGENT_NAME } from "@/lib/agent-name";
 
 // ── Types ─────────────────────────────────────────────────
 interface Req {
@@ -280,7 +281,7 @@ export function ApprovalInbox({ compact = false }: { compact?: boolean }) {
               className="inline-flex items-center gap-1 self-start text-[12.5px] font-medium transition-colors"
               style={{ color: "var(--accent)" }}
             >
-              View all in Hermes →
+              View all in {AGENT_NAME} →
             </a>
           )}
         </div>

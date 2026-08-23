@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Sunrise, RefreshCw, ArrowUpRight } from "lucide-react";
 import { Panel, Eyebrow, Button } from "@/components/ui/kit";
+import { AGENT_NAME } from "@/lib/agent-name";
 
 interface Section { label: string; items: string[] }
 interface Briefing {
@@ -100,7 +101,7 @@ export function HermesBriefing() {
       {empty ? (
         <div className="py-6 text-center">
           <p className="text-[14px] text-[var(--text-2)]">
-            {generating ? "Hermes is writing your brief… (~1 min)" : loaded ? "No brief yet." : "Loading…"}
+            {generating ? `${AGENT_NAME} is writing your brief… (~1 min)` : loaded ? "No brief yet." : "Loading…"}
           </p>
           {!generating && loaded && (
             <p className="mt-1 text-[12.5px] text-[var(--text-3)]">

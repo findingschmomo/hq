@@ -24,6 +24,10 @@
     <string>postgres://postgres:!Dashka52!@localhost:5433/HermesDB</string>
     <key>HERMES_BOARD</key>
     <string>default</string>
+    <key>OPENCODE_BIN</key>
+    <string>/Users/kellysmemo/.nvm/versions/node/v20.20.2/bin/opencode</string>
+    <key>OPENCODE_KINDS</key>
+    <string>oneshot,briefing.generate</string>
     <key>PATH</key>
     <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/kellysmemo/.local/bin:/Users/kellysmemo/.nvm/versions/node/v20.20.2/bin</string>
   </dict>

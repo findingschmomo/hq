@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Inbox, Plus, Trash2, MailOpen, Send, RefreshCw, Sparkles, Link2, Link2Off } from "lucide-react";
 import { Button, EmptyState, Pill, Skeleton, rise } from "@/components/ui/kit";
+import { AGENT_NAME } from "@/lib/agent-name";
 
 interface EmailItem {
   id: string;
@@ -154,19 +155,19 @@ export default function EmailTriagePage() {
           }).then((r) => r.json());
 
           if (check.state === "applied") {
-            stopPoll(`${check.updated} emails triaged by Hermes`);
+            stopPoll(`${check.updated} emails triaged by ${AGENT_NAME}`);
             fetchEmails();
           } else if (check.state === "parse_error") {
-            stopPoll("Hermes replied in an unexpected format");
+            stopPoll(`${AGENT_NAME} replied in an unexpected format`);
           } else if (check.state === "failed" || check.state === "rejected") {
-            stopPoll("Hermes triage failed");
+            stopPoll(`${AGENT_NAME} triage failed`);
           } else if (["queued", "approved", "running"].includes(check.state)) {
             setRunState(check.state);
           }
         }, 3000);
       }
     } catch {
-      setSyncMsg("Could not reach Hermes bus.");
+      setSyncMsg(`Could not reach the ${AGENT_NAME} bus.`);
       setTimeout(() => setSyncMsg(null), 5000);
     }
   }
@@ -219,7 +220,7 @@ export default function EmailTriagePage() {
             </Button>
             <Button variant="primary" size="sm" onClick={triageWithHermes} disabled={busy}>
               <Sparkles className={`w-3.5 h-3.5 ${busy ? "animate-pulse" : ""}`} />
-              {busy ? `Hermes ${runState}…` : "Triage with Hermes"}
+              {busy ? `${AGENT_NAME} ${runState}…` : `Triage with ${AGENT_NAME}`}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setShowAdd(true)}>
               <Plus className="w-3.5 h-3.5" /> Log

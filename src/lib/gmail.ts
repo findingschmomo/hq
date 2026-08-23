@@ -82,13 +82,20 @@ export interface GmailSummary {
   body: string | null;
 }
 
-/** Recent inbox mail, oldest spam/promotions filtered by query. */
-export async function listRecentInbox(max = 25): Promise<GmailSummary[]> {
-  const q = encodeURIComponent("label:inbox newer_than:14d");
-  const listRes = await gmailFetch(`/messages?q=${q}&maxResults=${max}`);
-  if (!listRes.ok) throw new Error(`Gmail list failed (${listRes.status})`);
-  const list = (await listRes.json()) as { messages?: { id: string }[] };
-  const ids = (list.messages ?? []).map((m) => m.id);
+/** Inbox mail from the last 30 days, paginated (Gmail caps pages at 500). */
+export async function listRecentInbox(max = 500): Promise<GmailSummary[]> {
+  const q = encodeURIComponent("label:inbox newer_than:30d");
+  const ids: string[] = [];
+  let pageToken: string | undefined;
+  do {
+    const params = new URLSearchParams({ q: decodeURIComponent(q), maxResults: String(Math.min(max - ids.length, 500)) });
+    if (pageToken) params.set("pageToken", pageToken);
+    const listRes = await gmailFetch(`/messages?${params}`);
+    if (!listRes.ok) throw new Error(`Gmail list failed (${listRes.status})`);
+    const list = (await listRes.json()) as { messages?: { id: string }[]; nextPageToken?: string };
+    ids.push(...(list.messages ?? []).map((m) => m.id));
+    pageToken = list.nextPageToken;
+  } while (pageToken && ids.length < max);
 
   const out: GmailSummary[] = [];
   for (const id of ids) {

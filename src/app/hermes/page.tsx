@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/kit";
 import { HermesDispatches } from "@/components/hermes-dispatches";
 import { HermesRuns } from "@/components/hermes-runs";
+import { AGENT_NAME } from "@/lib/agent-name";
 
 // ── Types ─────────────────────────────────────────────────
 type ReqStatus =
@@ -218,7 +219,7 @@ function DispatchBar({ onDone }: { onDone: () => void }) {
         flash(
           side
             ? "Sent to approval inbox — awaiting your go-ahead."
-            : "Queued for Hermes."
+            : `Queued for ${AGENT_NAME}.`
         );
         onDone();
       } else {
@@ -240,7 +241,7 @@ function DispatchBar({ onDone }: { onDone: () => void }) {
           onKeyDown={(e) => {
             if (e.key === "Enter") { e.preventDefault(); submit(); }
           }}
-          placeholder="Ask or tell Hermes to do something…"
+          placeholder="`Ask or tell ${AGENT_NAME} to do something…`"
           className="flex-1 min-w-0 bg-transparent text-[14px] text-[var(--text)] placeholder:text-[var(--text-3)] px-3.5 py-2.5 rounded-[10px] border border-[var(--line)] focus:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] outline-none transition-colors"
         />
         <div className="flex items-center gap-3 shrink-0">
@@ -438,7 +439,7 @@ function TaskBoard({
     <>
       <SectionHeader
         label="Task board"
-        title="Hermes kanban"
+        title={`${AGENT_NAME} kanban`}
         action={
           <div className="flex items-center gap-3">
             <span className="num text-[12px] text-[var(--text-2)]">{total} total</span>
@@ -542,7 +543,7 @@ function CronPanel({ jobs, syncedAt, onDone }: { jobs: CronJob[]; syncedAt: stri
     if (!schedule.trim() || !prompt.trim()) return;
     post(
       { op: "create", schedule: schedule.trim(), prompt: prompt.trim() },
-      "Schedule sent to Hermes."
+      `Schedule sent to ${AGENT_NAME}.`
     ).then(() => {
       setSchedule("");
       setPrompt("");
@@ -550,7 +551,7 @@ function CronPanel({ jobs, syncedAt, onDone }: { jobs: CronJob[]; syncedAt: stri
   };
   const runNow = () => {
     if (!runName.trim()) return;
-    post({ op: "run", name: runName.trim() }, "Run-now sent to Hermes.").then(() =>
+    post({ op: "run", name: runName.trim() }, `Run-now sent to ${AGENT_NAME}.`).then(() =>
       setRunName("")
     );
   };
@@ -634,7 +635,7 @@ function CronPanel({ jobs, syncedAt, onDone }: { jobs: CronJob[]; syncedAt: stri
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   rows={2}
-                  placeholder="Prompt — what should Hermes do on this cadence?"
+                  placeholder="`Prompt — what should ${AGENT_NAME} do on this cadence?`"
                   className="w-full bg-transparent text-[13px] text-[var(--text-2)] placeholder:text-[var(--text-3)] px-3 py-2 rounded-[8px] border border-[var(--line)] outline-none focus:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] resize-y"
                 />
                 <Button
@@ -691,7 +692,7 @@ function ActivityFeed({ events }: { events: Ev[] }) {
           <EmptyState
             icon={<ActivityIcon className="w-6 h-6" />}
             title="No recent activity"
-            hint="Events from Hermes and its agents will stream in here."
+            hint={`Events from ${AGENT_NAME} and its agents will stream in here.`}
           />
         </Panel>
       ) : (
@@ -796,7 +797,7 @@ export default function HermesPage() {
           <div>
             <Eyebrow>Agent runtime</Eyebrow>
             <h1 className="mt-2.5 text-[40px] font-semibold tracking-[-0.025em] leading-none text-[var(--text)]">
-              Hermes
+              {AGENT_NAME}
             </h1>
           </div>
           <div className="flex items-center gap-2.5">
@@ -861,7 +862,7 @@ export default function HermesPage() {
         <section className="mt-12">
           {!loaded ? (
             <>
-              <SectionHeader label="Task board" title="Hermes kanban" />
+              <SectionHeader label="Task board" title={`${AGENT_NAME} kanban`} />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Skeleton className="h-48" />
                 <Skeleton className="h-48" />

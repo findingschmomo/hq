@@ -70,6 +70,20 @@ export default function TasksPage() {
     }
   }
 
+  async function deleteTask(taskId: string) {
+    if (!window.confirm("Delete this task? This cannot be undone.")) return;
+    try {
+      await fetch("/api/tasks", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: taskId }),
+      });
+      fetchTasks();
+    } catch (e) {
+      console.error("Failed to delete task", e);
+    }
+  }
+
   if (loading) {
     return (
       <>
@@ -144,6 +158,7 @@ export default function TasksPage() {
                         task={task}
                         done={column.id === "Done"}
                         onStatusChange={(status) => updateTaskStatus(task.id, status)}
+                        onDelete={() => deleteTask(task.id)}
                       />
                     ))}
                   {count === 0 && (
@@ -163,10 +178,12 @@ function TaskCard({
   task,
   done,
   onStatusChange,
+  onDelete,
 }: {
   task: Task;
   done?: boolean;
   onStatusChange: (status: string) => void;
+  onDelete: () => void;
 }) {
   const priorityTone: Record<string, "warn" | "neutral"> = {
     High: "warn",
@@ -187,9 +204,9 @@ function TaskCard({
           <span className="text-[11px] text-[var(--text-3)]">{task.category}</span>
         )}
       </div>
-      <div className="mt-3 pt-3 border-t border-[var(--line)] opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="mt-3 pt-3 border-t border-[var(--line)] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
         <select
-          className="text-[12px] bg-[var(--surface-1)] text-[var(--text-2)] rounded-[var(--r-sm)] px-3 py-2 w-full border border-[var(--line)] focus:outline-none focus:border-[var(--line-strong)]"
+          className="text-[12px] bg-[var(--surface-1)] text-[var(--text-2)] rounded-[var(--r-sm)] px-3 py-2 flex-1 min-w-0 border border-[var(--line)] focus:outline-none focus:border-[var(--line-strong)]"
           value={task.status}
           onChange={(e) => onStatusChange(e.target.value)}
         >
@@ -199,6 +216,14 @@ function TaskCard({
             </option>
           ))}
         </select>
+        <button
+          type="button"
+          onClick={onDelete}
+          title="Delete task"
+          className="shrink-0 text-[11px] font-medium px-2.5 py-2 rounded-[var(--r-sm)] border border-[var(--line)] text-[#b3564d] hover:bg-[var(--surface-2)] hover:border-[#b3564d] transition-colors cursor-pointer"
+        >
+          Delete
+        </button>
       </div>
     </div>
   );

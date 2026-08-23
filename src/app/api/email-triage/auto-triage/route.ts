@@ -22,6 +22,14 @@ const PRIORITIES = ["high", "medium", "low"];
 const STAKEHOLDER_TYPES = ["staff", "board", "funder", "partner", "resident", "government", "vendor", "other"];
 
 const BATCH_SIZE = 12;
+/** Addresses owned by the ED — self-sent mail must never become a Stakeholder contact. */
+const SELF_EMAIL_FALLBACKS = ["henriettaobsidian@gmail.com"];
+
+async function getSelfEmails(): Promise<string[]> {
+  const row = await prisma.dataStore.findUnique({ where: { key: "gmail-oauth" } });
+  const connected = (row?.data as unknown as { email?: string } | null)?.email?.trim().toLowerCase();
+  return connected ? [...new Set([...SELF_EMAIL_FALLBACKS, connected])] : SELF_EMAIL_FALLBACKS;
+}
 
 interface Pipeline {
   totalEmails: number;
@@ -195,6 +203,7 @@ export async function POST(req: Request) {
 
     // ── apply ──
     let updated = 0;
+    const selfEmails = await getSelfEmails();
     for (const entry of entries) {
       const id = typeof entry.id === "string" ? entry.id : "";
       if (!id) continue;
@@ -273,6 +282,7 @@ export async function POST(req: Request) {
       const c = entry.contact;
       if (c && typeof c.name === "string" && c.name.trim()) {
         const emailAddr = typeof c.email === "string" && c.email.includes("@") ? c.email.trim().toLowerCase() : null;
+        if (emailAddr && selfEmails.includes(emailAddr)) continue;
         const existing = emailAddr
           ? await prisma.stakeholder.findFirst({ where: { email: { equals: emailAddr, mode: "insensitive" } } })
           : await prisma.stakeholder.findFirst({

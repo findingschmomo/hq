@@ -218,12 +218,22 @@ async function applyCurrentBatch(): Promise<Record<string, unknown>> {
       const startIdx = text.indexOf("[");
       const endIdx = text.lastIndexOf("]");
       if (startIdx === -1) throw new Error("no JSON array in result");
-      const candidate = endIdx > startIdx ? text.slice(startIdx, endIdx + 1) : salvageJsonArray(text.slice(startIdx));
+      let candidate = endIdx > startIdx ? text.slice(startIdx, endIdx + 1) : salvageJsonArray(text.slice(startIdx));
       if (!candidate) throw new Error("result truncated before any complete entry");
+      // models sometimes emit literal control characters inside strings — JSON forbids those
+      candidate = candidate.replace(/[\u0000-\u001F]/g, " ");
       entries = JSON.parse(candidate);
       if (!Array.isArray(entries)) throw new Error("not an array");
     } catch (e) {
-      return { state: "parse_error", detail: e instanceof Error ? e.message : "unparsable result" };
+      const detail = e instanceof Error ? e.message : "unparsable result";
+      // treat unparsable output like any other transient failure: re-dispatch the batch
+      if ((pipeline.retries ?? 0) < 3) {
+        pipeline.retries = (pipeline.retries ?? 0) + 1;
+        await savePipeline(pipeline);
+        await dispatchBatch(pipeline.currentBatch, pipeline);
+        return { state: "running", batch: { current: pipeline.currentBatch, total: pipeline.totalBatches }, retried: true, lastError: detail };
+      }
+      return { state: "parse_error", detail };
     }
 
     // ── apply ──
@@ -320,17 +330,20 @@ async function applyCurrentBatch(): Promise<Record<string, unknown>> {
         const existing = cEmail
           ? await prisma.stakeholder.findFirst({ where: { email: { equals: cEmail, mode: "insensitive" } } })
           : await prisma.stakeholder.findFirst({ where: { name: { equals: String(c.name).trim(), mode: "insensitive" } } });
+        let stakeholderId: string;
         if (existing) {
+          const newer = !existing.lastContactAt || email.receivedAt > existing.lastContactAt;
           await prisma.stakeholder.update({
             where: { id: existing.id },
             data: {
-              lastContactAt: new Date(),
+              ...(newer && { lastContactAt: email.receivedAt }),
               organization: existing.organization ?? (typeof c.organization === "string" && c.organization.trim() ? c.organization.trim().slice(0, 200) : null),
               title: existing.title ?? (typeof c.title === "string" && c.title.trim() ? c.title.trim().slice(0, 120) : null),
             },
           });
+          stakeholderId = existing.id;
         } else {
-          await prisma.stakeholder.create({
+          const created = await prisma.stakeholder.create({
             data: {
               name: (typeof c.name === "string" && c.name.trim() ? c.name.trim() : cEmail).slice(0, 160),
               email: cEmail || null,
@@ -342,6 +355,18 @@ async function applyCurrentBatch(): Promise<Record<string, unknown>> {
             },
           });
           pipeline.stakeholdersNew++;
+          stakeholderId = created.id;
+        }
+
+        // ── log the email itself as a touchpoint ──
+        const touchpointSummary = `${email.subject}${summary ? ` — ${summary.slice(0, 150)}` : ""}`.slice(0, 200);
+        const alreadyLogged = await prisma.stakeholderInteraction.findFirst({
+          where: { stakeholderId, channel: "email", date: email.receivedAt, summary: touchpointSummary },
+        });
+        if (!alreadyLogged) {
+          await prisma.stakeholderInteraction.create({
+            data: { stakeholderId, channel: "email", direction: "inbound", summary: touchpointSummary, date: email.receivedAt },
+          });
         }
       }
     }

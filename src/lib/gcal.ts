@@ -12,6 +12,7 @@ export interface CalEvent {
   meetLink: string | null;
   description: string | null;
   organizerEmail: string | null;
+  attendeeEmails: string[];
 }
 
 interface GEvent {
@@ -23,6 +24,7 @@ interface GEvent {
   start?: { dateTime?: string; date?: string };
   end?: { dateTime?: string; date?: string };
   organizer?: { email?: string };
+  attendees?: { email?: string }[];
 }
 
 export class CalendarNotReadyError extends Error {
@@ -79,6 +81,11 @@ export async function listEvents(timeMinISO: string, timeMaxISO: string): Promis
     const allDay = Boolean(e.start?.date && !e.start?.dateTime);
     const startISO = e.start?.dateTime ?? `${e.start?.date}T00:00:00`;
     const endISO = e.end?.dateTime ?? `${e.end?.date}T23:59:59`;
+    const attendeeEmails = (e.attendees ?? [])
+      .map((a) => (a.email ?? "").trim().toLowerCase())
+      .filter((x) => x.includes("@"));
+    const organizer = (e.organizer?.email ?? "").trim().toLowerCase();
+    if (organizer.includes("@")) attendeeEmails.unshift(organizer);
     return {
       id: e.id,
       title: e.summary || "(no title)",
@@ -88,7 +95,8 @@ export async function listEvents(timeMinISO: string, timeMaxISO: string): Promis
       location: e.location ?? null,
       meetLink: e.hangoutLink ?? null,
       description: e.description ?? null,
-      organizerEmail: e.organizer?.email ?? null,
+      organizerEmail: organizer || null,
+      attendeeEmails: [...new Set(attendeeEmails)],
     };
   });
 }

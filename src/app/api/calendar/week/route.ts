@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { listEvents, CalendarNotReadyError } from "@/lib/gcal";
+import { logMeetingTouchpoints } from "@/lib/touchpoints";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,9 @@ export async function GET(req: Request) {
 
   try {
     const events = await listEvents(sunday.toISOString(), saturday.toISOString());
+
+    // viewing the calendar doubles as touchpoint logging — best-effort, never blocks the render
+    void logMeetingTouchpoints(events).catch(() => {});
 
     const todayStr = new Date().toDateString();
     const days: DayBucket[] = [];

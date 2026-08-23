@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Users, Plus, Trash2, MessageSquarePlus, AlertTriangle } from "lucide-react";
+import { Users, Plus, Trash2, MessageSquarePlus, AlertTriangle, Pencil, CalendarClock } from "lucide-react";
 import { Button, EmptyState, Pill, Skeleton, rise } from "@/components/ui/kit";
 
 interface Interaction {
@@ -43,6 +43,28 @@ export default function StakeholdersPage() {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  async function syncMeetings() {
+    setSyncing(true);
+    setSyncMsg(null);
+    try {
+      const res = await fetch("/api/stakeholders/sync-meetings", { method: "POST" });
+      const d = await res.json();
+      if (!res.ok) {
+        setSyncMsg(d.error || "Sync failed");
+      } else {
+        setSyncMsg(`${d.logged} meeting touchpoint${d.logged === 1 ? "" : "s"} logged from ${d.scanned} events`);
+        fetchStakeholders();
+      }
+    } catch {
+      setSyncMsg("Sync failed");
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setSyncMsg(null), 8000);
+    }
+  }
 
   const fetchStakeholders = useCallback(async () => {
     try {
@@ -84,9 +106,15 @@ export default function StakeholdersPage() {
           <div className="eyebrow mb-2">Relationships</div>
           <h1 className="text-[32px] font-semibold tracking-[-0.025em] leading-none text-[var(--text)]">Stakeholders</h1>
         </div>
-        <Button variant="primary" onClick={() => setShowAdd(true)}>
-          <Plus className="w-3.5 h-3.5" /> Add Person
-        </Button>
+        <div className="flex items-center gap-2">
+          {syncMsg && <span className="text-[12px] text-[var(--text-3)]">{syncMsg}</span>}
+          <Button variant="ghost" onClick={syncMeetings} disabled={syncing}>
+            <CalendarClock className="w-3.5 h-3.5" /> {syncing ? "Syncing…" : "Sync meetings"}
+          </Button>
+          <Button variant="primary" onClick={() => setShowAdd(true)}>
+            <Plus className="w-3.5 h-3.5" /> Add Person
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -154,7 +182,12 @@ export default function StakeholdersPage() {
 
           {/* Detail */}
           {selected && (
-            <DetailPanel stakeholder={selected} onLogged={fetchStakeholders} onRemove={() => remove(selected.id)} onClose={() => setSelectedId(null)} />
+            <DetailPanel
+              stakeholder={selected}
+              onLogged={fetchStakeholders}
+              onRemove={() => remove(selected.id)}
+              onClose={() => setSelectedId(null)}
+            />
           )}
         </div>
       )}
@@ -203,56 +236,163 @@ function DetailPanel({
   onRemove: () => void;
   onClose: () => void;
 }) {
+  const [editing, setEditing] = useState(false);
+
   return (
     <div className="hq-rise panel p-6 h-fit lg:sticky lg:top-8 space-y-5" style={{ animationDelay: "120ms" }}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[17px] font-semibold text-[var(--text)]">{stakeholder.name}</p>
-          <p className="text-[12.5px] text-[var(--text-3)] mt-0.5">
-            {stakeholder.title && `${stakeholder.title} · `}
-            {stakeholder.organization || stakeholder.type}
-          </p>
-          {(stakeholder.email || stakeholder.phone) && (
-            <p className="num text-[11.5px] text-[var(--text-4)] mt-1">{[stakeholder.email, stakeholder.phone].filter(Boolean).join(" · ")}</p>
+      {editing ? (
+        <EditStakeholderForm
+          key={stakeholder.id}
+          stakeholder={stakeholder}
+          onDone={() => {
+            setEditing(false);
+            onLogged();
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      ) : (
+        <>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[17px] font-semibold text-[var(--text)]">{stakeholder.name}</p>
+              <p className="text-[12.5px] text-[var(--text-3)] mt-0.5">
+                {stakeholder.title && `${stakeholder.title} · `}
+                {stakeholder.organization || stakeholder.type}
+              </p>
+              {(stakeholder.email || stakeholder.phone) && (
+                <p className="num text-[11.5px] text-[var(--text-4)] mt-1">{[stakeholder.email, stakeholder.phone].filter(Boolean).join(" · ")}</p>
+              )}
+            </div>
+            <div className="flex gap-1">
+              <button onClick={onClose} className="p-2 rounded-lg text-[var(--text-4)] hover:text-[var(--text-2)] hover:bg-[var(--surface-1)] transition-colors text-[13px]">✕</button>
+              <button onClick={() => setEditing(true)} className="p-2 rounded-lg text-[var(--text-4)] hover:text-[var(--text-2)] hover:bg-[var(--surface-1)] transition-colors" title="Edit"><Pencil className="w-4 h-4" /></button>
+              <button onClick={onRemove} className="p-2 rounded-lg text-[var(--text-4)] hover:text-[var(--down)] hover:bg-[var(--surface-1)] transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+            </div>
+          </div>
+
+          {stakeholder.notes && (
+            <p className="text-[12.5px] text-[var(--text-2)] bg-[var(--surface-1)] border border-[var(--line)] rounded-[var(--r-sm)] p-3 leading-relaxed">{stakeholder.notes}</p>
           )}
+
+          <LogInteractionForm stakeholderId={stakeholder.id} onLogged={onLogged} />
+
+          <div>
+            <div className="eyebrow mb-2">Recent Touchpoints</div>
+            {stakeholder.interactions.length === 0 ? (
+              <p className="text-[12.5px] text-[var(--text-4)] py-4 text-center">No interactions logged yet.</p>
+            ) : (
+              <div className="space-y-0">
+                {stakeholder.interactions.map((x) => (
+                  <div key={x.id} className="py-3 border-b border-[var(--line)] last:border-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <Pill tone={x.direction === "inbound" ? "accent" : "neutral"}>{x.channel}</Pill>
+                      {x.sentiment === "positive" && <Pill tone="up">positive</Pill>}
+                      {x.sentiment === "negative" && <Pill tone="down">negative</Pill>}
+                      <span className="num text-[10.5px] text-[var(--text-4)] ml-auto">{fmtDate(x.date)}</span>
+                    </div>
+                    <p className="text-[12.5px] text-[var(--text-2)] leading-snug">{x.summary}</p>
+                    {x.followUpNeeded && !x.followUpDone && (
+                      <p className="text-[11.5px] mt-1 inline-flex items-center gap-1" style={{ color: "var(--warn)" }}>
+                        Follow-up{x.followUpDate ? ` by ${fmtDate(x.followUpDate)}` : ""}
+                      </p>
+                    )}
+                    {x.followUpDone && <p className="text-[11.5px] mt-1" style={{ color: "var(--up)" }}>Follow-up done ✓</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function EditStakeholderForm({
+  stakeholder,
+  onDone,
+  onCancel,
+}: {
+  stakeholder: Stakeholder;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [form, setForm] = useState({
+    name: stakeholder.name || "",
+    organization: stakeholder.organization || "",
+    title: stakeholder.title || "",
+    type: stakeholder.type || "partner",
+    email: stakeholder.email || "",
+    phone: stakeholder.phone || "",
+    importance: stakeholder.importance || "normal",
+    cadenceDays: stakeholder.cadenceDays != null ? String(stakeholder.cadenceDays) : "",
+    notes: stakeholder.notes || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function save() {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    await fetch("/api/stakeholders", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: stakeholder.id, ...form }),
+    }).catch(() => {});
+    setSaving(false);
+    onDone();
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="eyebrow">Edit Contact</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <div className="eyebrow !text-[9.5px] mb-1.5">Name</div>
+          <input autoFocus value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Full name" className={inputCls} />
         </div>
-        <div className="flex gap-1">
-          <button onClick={onClose} className="p-2 rounded-lg text-[var(--text-4)] hover:text-[var(--text-2)] hover:bg-[var(--surface-1)] transition-colors text-[13px]">✕</button>
-          <button onClick={onRemove} className="p-2 rounded-lg text-[var(--text-4)] hover:text-[var(--down)] hover:bg-[var(--surface-1)] transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+        <div>
+          <div className="eyebrow !text-[9.5px] mb-1.5">Organization</div>
+          <input value={form.organization} onChange={(e) => set("organization", e.target.value)} placeholder="Company / org" className={inputCls} />
+        </div>
+        <div>
+          <div className="eyebrow !text-[9.5px] mb-1.5">Title</div>
+          <input value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Role" className={inputCls} />
+        </div>
+        <div>
+          <div className="eyebrow !text-[9.5px] mb-1.5">Type</div>
+          <select value={form.type} onChange={(e) => set("type", e.target.value)} className={inputCls}>
+            {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <div className="eyebrow !text-[9.5px] mb-1.5">Email</div>
+          <input value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="name@org.org" className={inputCls} />
+        </div>
+        <div>
+          <div className="eyebrow !text-[9.5px] mb-1.5">Phone</div>
+          <input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="(215) 555-0100" className={inputCls} />
+        </div>
+        <div>
+          <div className="eyebrow !text-[9.5px] mb-1.5">Importance</div>
+          <select value={form.importance} onChange={(e) => set("importance", e.target.value)} className={inputCls}>
+            <option value="high">high</option>
+            <option value="normal">normal</option>
+            <option value="low">low</option>
+          </select>
+        </div>
+        <div>
+          <div className="eyebrow !text-[9.5px] mb-1.5">Contact every (days)</div>
+          <input type="number" value={form.cadenceDays} onChange={(e) => set("cadenceDays", e.target.value)} placeholder="e.g. 30" className={inputCls} />
+        </div>
+        <div className="sm:col-span-2">
+          <div className="eyebrow !text-[9.5px] mb-1.5">Notes</div>
+          <textarea rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Context — how you met, what they care about…" className={inputCls} />
         </div>
       </div>
-
-      {stakeholder.notes && (
-        <p className="text-[12.5px] text-[var(--text-2)] bg-[var(--surface-1)] border border-[var(--line)] rounded-[var(--r-sm)] p-3 leading-relaxed">{stakeholder.notes}</p>
-      )}
-
-      <LogInteractionForm stakeholderId={stakeholder.id} onLogged={onLogged} />
-
-      <div>
-        <div className="eyebrow mb-2">Recent Touchpoints</div>
-        {stakeholder.interactions.length === 0 ? (
-          <p className="text-[12.5px] text-[var(--text-4)] py-4 text-center">No interactions logged yet.</p>
-        ) : (
-          <div className="space-y-0">
-            {stakeholder.interactions.map((x) => (
-              <div key={x.id} className="py-3 border-b border-[var(--line)] last:border-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <Pill tone={x.direction === "inbound" ? "accent" : "neutral"}>{x.channel}</Pill>
-                  {x.sentiment === "positive" && <Pill tone="up">positive</Pill>}
-                  {x.sentiment === "negative" && <Pill tone="down">negative</Pill>}
-                  <span className="num text-[10.5px] text-[var(--text-4)] ml-auto">{fmtDate(x.date)}</span>
-                </div>
-                <p className="text-[12.5px] text-[var(--text-2)] leading-snug">{x.summary}</p>
-                {x.followUpNeeded && !x.followUpDone && (
-                  <p className="text-[11.5px] mt-1 inline-flex items-center gap-1" style={{ color: "var(--warn)" }}>
-                    Follow-up{x.followUpDate ? ` by ${fmtDate(x.followUpDate)}` : ""}
-                  </p>
-                )}
-                {x.followUpDone && <p className="text-[11.5px] mt-1" style={{ color: "var(--up)" }}>Follow-up done ✓</p>}
-              </div>
-            ))}
-          </div>
-        )}
+      <div className="flex gap-2">
+        <Button variant="primary" size="sm" onClick={save} disabled={saving}>Save Changes</Button>
+        <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
       </div>
     </div>
   );

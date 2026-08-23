@@ -116,7 +116,7 @@ function RelationshipsPanel({ followUps, touches }: { followUps: FollowUp[]; tou
     <div className="panel flex flex-col p-6 h-full">
       <div className="flex items-center justify-between mb-4">
         <span className="eyebrow">Relationships</span>
-        <Link href="/stakeholders" className="text-[11px] text-[var(--hq-text-faint)] hover:text-[var(--hq-text-dim)] transition-colors">View all</Link>
+        <Link href="/people" className="text-[11px] text-[var(--hq-text-faint)] hover:text-[var(--hq-text-dim)] transition-colors">View all</Link>
       </div>
 
       {followUps.length > 0 && (
@@ -124,7 +124,7 @@ function RelationshipsPanel({ followUps, touches }: { followUps: FollowUp[]; tou
           <div className="eyebrow !text-[9.5px] mb-2">Follow-ups due</div>
           <div className="space-y-1.5">
             {followUps.map((f) => (
-              <Link key={f.id} href="/stakeholders" className="group flex items-center gap-2.5 rounded-lg border px-2.5 py-2"
+              <Link key={f.id} href="/people" className="group flex items-center gap-2.5 rounded-lg border px-2.5 py-2"
                 style={{ borderColor: "color-mix(in srgb, var(--hq-warn) 22%, transparent)", background: "color-mix(in srgb, var(--hq-warn) 6%, transparent)" }}>
                 <Flag className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--hq-warn)" }} />
                 <div className="min-w-0 flex-1">
@@ -328,7 +328,7 @@ export default function Dashboard() {
           <MetricCard
             label="Due for Contact" value={data.stakeholders.needsContact}
             sub={`${data.stakeholders.total} tracked relationships`}
-            icon={<Users className="w-4 h-4" />} accent="#fbbf24" href="/stakeholders" loaded={loaded}
+            icon={<Users className="w-4 h-4" />} accent="#fbbf24" href="/people" loaded={loaded}
           />
         </div>
 

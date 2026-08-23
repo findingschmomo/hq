@@ -5,7 +5,7 @@ import { logMeetingTouchpoints } from "@/lib/touchpoints";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-/** POST /api/stakeholders/sync-meetings — scan the calendar (default: last
+/** POST /api/people/sync-meetings — scan the calendar (default: last
     30 days + next 7) and log any events that include a stakeholder as a
     "meeting" touchpoint. Safe to re-run; duplicates are skipped. */
 export async function POST(req: Request) {

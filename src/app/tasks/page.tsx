@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import { Button, Pill, rise } from "@/components/ui/kit";
 
+interface Delegatee {
+  id: string;
+  name: string;
+  organization?: string | null;
+}
+
 interface Task {
   id: string;
   name: string;
@@ -10,23 +16,30 @@ interface Task {
   priority: string;
   category: string;
   dueDate?: string;
+  delegatee?: Delegatee | null;
+  blockedReason?: string | null;
 }
 
 const columns = [
   { id: "Not started", label: "To Do" },
-  { id: "Approved", label: "Approved" },
   { id: "In progress", label: "In Progress" },
+  { id: "Blocked", label: "Blocked" },
   { id: "Done", label: "Done" },
 ];
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [people, setPeople] = useState<Delegatee[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTask, setNewTask] = useState("");
   const [showAddTask, setShowAddTask] = useState(false);
 
   useEffect(() => {
     fetchTasks();
+    fetch("/api/people")
+      .then((r) => r.json())
+      .then((d) => setPeople((d.stakeholders || []).map((s: { id: string; name: string; organization?: string }) => ({ id: s.id, name: s.name, organization: s.organization }))))
+      .catch(() => {});
   }, []);
 
   async function fetchTasks() {
@@ -63,6 +76,19 @@ export default function TasksPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: taskId, status: newStatus }),
+      });
+      fetchTasks();
+    } catch (e) {
+      console.error("Failed to update task", e);
+    }
+  }
+
+  async function patchTask(taskId: string, fields: Record<string, unknown>) {
+    try {
+      await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: taskId, ...fields }),
       });
       fetchTasks();
     } catch (e) {
@@ -115,7 +141,6 @@ export default function TasksPage() {
       <div className="relative z-10 h-full flex flex-col w-full mx-auto pt-4 pb-16">
         <div className="hq-rise flex justify-between items-end gap-4 mb-10" style={rise(0)}>
           <div>
-            <div className="eyebrow mb-2">Synced with Notion</div>
             <h1 className="text-[32px] font-semibold tracking-[-0.025em] leading-none text-[var(--text)]">Tasks</h1>
           </div>
           <Button variant="primary" onClick={() => setShowAddTask(true)}>+ Add Task</Button>
@@ -157,7 +182,10 @@ export default function TasksPage() {
                         key={task.id}
                         task={task}
                         done={column.id === "Done"}
+                        people={people}
                         onStatusChange={(status) => updateTaskStatus(task.id, status)}
+                        onDelegate={(delegateeId) => patchTask(task.id, { delegateeId: delegateeId || null })}
+                        onBlockedReason={(reason) => patchTask(task.id, { blockedReason: reason })}
                         onDelete={() => deleteTask(task.id)}
                       />
                     ))}
@@ -177,12 +205,18 @@ export default function TasksPage() {
 function TaskCard({
   task,
   done,
+  people,
   onStatusChange,
+  onDelegate,
+  onBlockedReason,
   onDelete,
 }: {
   task: Task;
   done?: boolean;
+  people: Delegatee[];
   onStatusChange: (status: string) => void;
+  onDelegate: (delegateeId: string) => void;
+  onBlockedReason: (reason: string) => void;
   onDelete: () => void;
 }) {
   const priorityTone: Record<string, "warn" | "neutral"> = {
@@ -196,6 +230,14 @@ function TaskCard({
       <p className={`font-medium text-[13px] mb-3 leading-relaxed ${done ? "text-[var(--text-3)] line-through" : "text-[var(--text)]"}`}>
         {task.name}
       </p>
+      {task.status === "Blocked" && (
+        <div className="mb-3">
+          <BlockedReasonField
+            initial={task.blockedReason || ""}
+            onSave={onBlockedReason}
+          />
+        </div>
+      )}
       <div className="flex items-center gap-2 flex-wrap">
         {task.priority && (
           <Pill tone={priorityTone[task.priority] || "neutral"}>{task.priority}</Pill>
@@ -203,10 +245,13 @@ function TaskCard({
         {task.category && (
           <span className="text-[11px] text-[var(--text-3)]">{task.category}</span>
         )}
+        {task.delegatee && (
+          <Pill tone="accent">→ {task.delegatee.name}</Pill>
+        )}
       </div>
-      <div className="mt-3 pt-3 border-t border-[var(--line)] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+      <div className="mt-3 pt-3 border-t border-[var(--line)] opacity-0 group-hover:opacity-100 transition-opacity space-y-2">
         <select
-          className="text-[12px] bg-[var(--surface-1)] text-[var(--text-2)] rounded-[var(--r-sm)] px-3 py-2 flex-1 min-w-0 border border-[var(--line)] focus:outline-none focus:border-[var(--line-strong)]"
+          className="text-[12px] bg-[var(--surface-1)] text-[var(--text-2)] rounded-[var(--r-sm)] px-3 py-2 w-full border border-[var(--line)] focus:outline-none focus:border-[var(--line-strong)]"
           value={task.status}
           onChange={(e) => onStatusChange(e.target.value)}
         >
@@ -216,15 +261,63 @@ function TaskCard({
             </option>
           ))}
         </select>
-        <button
-          type="button"
-          onClick={onDelete}
-          title="Delete task"
-          className="shrink-0 text-[11px] font-medium px-2.5 py-2 rounded-[var(--r-sm)] border border-[var(--line)] text-[#b3564d] hover:bg-[var(--surface-2)] hover:border-[#b3564d] transition-colors cursor-pointer"
-        >
-          Delete
-        </button>
+        <div className="flex items-center gap-2">
+          <select
+            className="text-[12px] bg-[var(--surface-1)] text-[var(--text-2)] rounded-[var(--r-sm)] px-3 py-2 flex-1 min-w-0 border border-[var(--line)] focus:outline-none focus:border-[var(--line-strong)]"
+            value={task.delegatee?.id ?? ""}
+            onChange={(e) => onDelegate(e.target.value)}
+            title="Delegate to"
+          >
+            <option value="">Delegate to…</option>
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}{p.organization ? ` · ${p.organization}` : ""}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={onDelete}
+            title="Delete task"
+            className="shrink-0 text-[11px] font-medium px-2.5 py-2 rounded-[var(--r-sm)] border border-[var(--line)] text-[#b3564d] hover:bg-[var(--surface-2)] hover:border-[#b3564d] transition-colors cursor-pointer"
+          >
+            Delete
+          </button>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function BlockedReasonField({ initial, onSave }: { initial: string; onSave: (reason: string) => void }) {
+  const [value, setValue] = useState(initial);
+  const dirty = value !== initial;
+
+  return (
+    <div className="bg-[var(--surface-2)] border border-[var(--line)] rounded-[var(--r-sm)] p-2.5">
+      {!initial && !dirty && (
+        <p className="text-[11px] font-medium mb-1.5" style={{ color: "var(--warn)" }}>
+          What&apos;s blocking this?
+        </p>
+      )}
+      <textarea
+        rows={2}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="e.g. waiting on Robin to send the venue contract…"
+        className="w-full bg-transparent text-[12px] text-[var(--text-2)] placeholder-[var(--text-4)] resize-none focus:outline-none leading-relaxed"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            if (dirty) onSave(value);
+          }
+        }}
+      />
+      {dirty && (
+        <div className="flex justify-end mt-1">
+          <Button variant="primary" size="sm" onClick={() => onSave(value)}>Save</Button>
+        </div>
+      )}
     </div>
   );
 }

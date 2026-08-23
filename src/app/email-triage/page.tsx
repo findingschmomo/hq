@@ -29,7 +29,7 @@ const STATUS_TABS = [
   { id: "done", label: "Done" },
 ];
 
-const CATEGORIES = ["general", "board", "staff", "funder", "partner", "resident", "press", "facilities", "finance"];
+const CATEGORIES = ["general", "board", "staff", "funder", "partner", "student", "press", "facilities", "finance"];
 const PRIORITIES = ["high", "medium", "low"];
 
 const priorityTone: Record<string, "down" | "warn" | "neutral"> = {

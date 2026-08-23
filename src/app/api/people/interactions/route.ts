@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// POST /api/stakeholders/interactions — log a touchpoint
+// POST /api/people/interactions — log a touchpoint
 export async function POST(req: Request) {
   const body = await req.json();
   if (!body.stakeholderId || !body.summary?.trim()) {
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   return NextResponse.json(interaction);
 }
 
-// PATCH /api/stakeholders/interactions — e.g. mark a follow-up done
+// PATCH /api/people/interactions — e.g. mark a follow-up done
 export async function PATCH(req: Request) {
   const { id, ...updates } = await req.json();
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
@@ -53,7 +53,7 @@ export async function PATCH(req: Request) {
   }
 }
 
-// GET /api/stakeholders/interactions?followUps=true — open follow-ups across everyone
+// GET /api/people/interactions?followUps=true — open follow-ups across everyone
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const followUps = searchParams.get("followUps");

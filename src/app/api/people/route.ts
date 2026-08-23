@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/stakeholders?type=funder&q=smith
+// GET /api/people?type=funder&q=smith
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type");
@@ -25,6 +25,11 @@ export async function GET(req: Request) {
     orderBy: [{ importance: "asc" }, { lastContactAt: "desc" }],
     include: {
       interactions: { orderBy: { date: "desc" }, take: 5 },
+      delegatedTasks: {
+        where: { status: { not: "Done" } },
+        orderBy: [{ priority: "asc" }, { createdAt: "desc" }],
+        take: 10,
+      },
     },
   });
 
@@ -62,6 +67,8 @@ export async function POST(req: Request) {
       importance: body.importance || "normal",
       cadenceDays: body.cadenceDays ? Number(body.cadenceDays) : null,
       notes: body.notes || null,
+      oneOnOneDocUrl: body.oneOnOneDocUrl || null,
+      isDirectReport: Boolean(body.isDirectReport),
     },
   });
 
@@ -73,11 +80,12 @@ export async function PATCH(req: Request) {
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
   const data: Record<string, unknown> = {};
-  for (const key of ["name", "organization", "title", "type", "email", "phone", "importance", "notes"]) {
+  for (const key of ["name", "organization", "title", "type", "email", "phone", "importance", "notes", "oneOnOneDocUrl"]) {
     if (key in updates) data[key] = updates[key] || null;
   }
   if ("cadenceDays" in updates) data.cadenceDays = updates.cadenceDays ? Number(updates.cadenceDays) : null;
   if ("archived" in updates) data.archived = Boolean(updates.archived);
+  if ("isDirectReport" in updates) data.isDirectReport = Boolean(updates.isDirectReport);
 
   try {
     const stakeholder = await prisma.stakeholder.update({ where: { id }, data });

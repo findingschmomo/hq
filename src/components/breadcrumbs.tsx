@@ -9,7 +9,8 @@ const pathLabels: Record<string, string> = {
   "/tasks": "Tasks",
   "/email-triage": "Email Triage",
   "/kpis": "KPIs",
-  "/stakeholders": "Stakeholders",
+  "/people": "People",
+  "/team": "My Team",
   "/ideas": "Ideas",
   "/memory-wiki": "Memory Wiki",
 };

@@ -18,9 +18,9 @@ const TRIAGE_TITLE_PREFIX = "Triage inbox";
 const PIPELINE_KEY = "email-triage:pipeline";
 const DIGEST_KEY = "email-triage:digest";
 
-const BUCKETS = ["general", "board", "staff", "funder", "partner", "resident", "press", "facilities", "finance"];
+const BUCKETS = ["general", "board", "staff", "funder", "partner", "student", "press", "facilities", "finance"];
 const PRIORITIES = ["high", "medium", "low"];
-const STAKEHOLDER_TYPES = ["staff", "board", "funder", "partner", "resident", "government", "vendor", "other"];
+const STAKEHOLDER_TYPES = ["staff", "board", "funder", "partner", "student", "government", "vendor", "other"];
 
 const BATCH_SIZE = 12;
 /** Addresses owned by the ED — self-sent mail must never become a Stakeholder contact. */
@@ -97,7 +97,7 @@ function buildPrompt(
     "- task: null, or an object for a concrete task worth tracking:",
     '     {"name":"imperative title","notes":"context incl. who/what","dueDate":"YYYY-MM-DD"|null,"priority":"high|medium|low"}',
     "- contact: null, or an object when the sender is an identifiable person/org worth remembering:",
-    '     {"name":"person name","email":"sender email","organization":"their org","title":"role if evident","type":"board|staff|funder|partner|resident|government|vendor|other"}',
+    '     {"name":"person name","email":"sender email","organization":"their org","title":"role if evident","type":"board|staff|funder|partner|student|government|vendor|other"}',
     "",
     "Be conservative: omit task/contact rather than inventing details.",
     "Respond with ONLY a raw JSON array — no prose, no markdown fences:",
@@ -304,7 +304,7 @@ async function applyCurrentBatch(): Promise<Record<string, unknown>> {
             finance: "admin",
             board: "admin",
             staff: "people",
-            resident: "programs",
+            student: "programs",
             facilities: "facilities",
           };
           await prisma.task.create({

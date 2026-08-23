@@ -33,7 +33,8 @@ const navGroups = [
       { href: "/email-triage", label: "Email Triage", icon: Inbox },
       { href: "/calendar", label: "Calendar", icon: CalendarDays },
       { href: "/kpis", label: "KPIs", icon: BarChart3 },
-      { href: "/stakeholders", label: "Stakeholders", icon: Users },
+      { href: "/people", label: "People", icon: Users },
+      { href: "/team", label: "My Team", icon: Users },
       { href: "/ideas", label: "Ideas", icon: Lightbulb },
     ],
   },
@@ -50,7 +51,7 @@ const mobileTabsRaw = [
   { href: "/", label: "Dashboard", icon: Home },
   { href: "/email-triage", label: "Inbox", icon: Inbox },
   { href: "/kpis", label: "KPIs", icon: BarChart3 },
-  { href: "/stakeholders", label: "People", icon: Users },
+  { href: "/people", label: "People", icon: Users },
   { href: "/hermes", label: AGENT_NAME, icon: Cpu },
 ];
 

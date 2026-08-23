@@ -61,7 +61,7 @@ model EmailItem {
   subject     String
   senderName  String?
   senderEmail String?
-  category    String    @default("general") // general | board | staff | funder | partner | resident | press | facilities | finance
+  category    String    @default("general") // general | board | staff | funder | partner | student | press | facilities | finance
   priority    String    @default("medium") // high | medium | low
   status      String    @default("triage") // triage | in_progress | waiting | done | archived
   summary     String?   @db.Text
@@ -122,7 +122,7 @@ model Stakeholder {
   name             String
   organization     String?
   title            String?
-  type             String                 @default("partner") // staff | board | funder | partner | resident | government | vendor | other
+  type             String                 @default("partner") // staff | board | funder | partner | student | government | vendor | other
   email            String?
   phone            String?
   importance       String                 @default("normal") // high | normal | low
@@ -130,7 +130,11 @@ model Stakeholder {
   notes            String?                @db.Text
   lastContactAt    DateTime?
   archived         Boolean                @default(false)
+  isDirectReport   Boolean                @default(false)
+  oneOnOneDocUrl   String?
   interactions     StakeholderInteraction[]
+  delegatedTasks   Task[]
+  metrics          CoordinatorMetric[]
 
   @@index([type])
   @@index([archived])
@@ -174,16 +178,36 @@ model Idea {
 // ─── Tasks ───────────────────────────────────────────────────────
 
 model Task {
-  id        String    @id @default(cuid())
-  name      String
-  status    String    @default("Not started") // Not started | Approved | In progress | Done
-  priority  String    @default("Medium") // High | Medium | Low
-  category  String?
-  dueDate   DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id            String       @id @default(cuid())
+  name          String
+  status        String       @default("Not started") // Not started | In progress | Blocked | Done
+  priority      String       @default("Medium") // High | Medium | Low
+  category      String?
+  dueDate       DateTime?
+  delegateeId   String?
+  delegatee     Stakeholder? @relation(fields: [delegateeId], references: [id], onDelete: SetNull)
+  blockedReason String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   @@index([status])
+  @@index([delegateeId])
+}
+
+// ─── Coordinator Metrics ────────────────────────────────────────
+
+model CoordinatorMetric {
+  id            String      @id @default(cuid())
+  stakeholderId String
+  stakeholder   Stakeholder @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
+  name          String      // e.g. "Students enrolled", "Programs run"
+  value         Float
+  unit          String?
+  recordedAt    DateTime    @default(now())
+  note          String?
+  createdAt     DateTime    @default(now())
+
+  @@index([stakeholderId, name, recordedAt])
 }
 
 // ─── Generic Key-Value Store ────────────────────────────────────

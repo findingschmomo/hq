@@ -27,16 +27,19 @@ interface Stakeholder {
   importance: string;
   cadenceDays?: number | null;
   notes?: string | null;
+  oneOnOneDocUrl?: string | null;
+  isDirectReport?: boolean;
   lastContactAt?: string | null;
   interactions: Interaction[];
+  delegatedTasks?: { id: string; name: string; status: string; priority: string; dueDate?: string | null }[];
   needsContact: boolean;
 }
 
-const TYPES = ["staff", "board", "funder", "partner", "resident", "government", "vendor", "other"];
+const TYPES = ["staff", "board", "funder", "partner", "student", "government", "vendor", "other"];
 const CHANNELS = ["email", "call", "meeting", "text", "event", "other"];
 const importanceTone: Record<string, "down" | "warn" | "neutral"> = { high: "down", normal: "neutral", low: "neutral" };
 
-export default function StakeholdersPage() {
+export default function PeoplePage() {
   const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
   const [typeFilter, setTypeFilter] = useState("all");
   const [query, setQuery] = useState("");
@@ -50,7 +53,7 @@ export default function StakeholdersPage() {
     setSyncing(true);
     setSyncMsg(null);
     try {
-      const res = await fetch("/api/stakeholders/sync-meetings", { method: "POST" });
+      const res = await fetch("/api/people/sync-meetings", { method: "POST" });
       const d = await res.json();
       if (!res.ok) {
         setSyncMsg(d.error || "Sync failed");
@@ -71,7 +74,7 @@ export default function StakeholdersPage() {
       const params = new URLSearchParams();
       if (typeFilter !== "all") params.set("type", typeFilter);
       if (query.trim()) params.set("q", query.trim());
-      const res = await fetch(`/api/stakeholders?${params}`);
+      const res = await fetch(`/api/people?${params}`);
       const data = await res.json();
       setStakeholders(data.stakeholders || []);
     } catch {
@@ -88,7 +91,7 @@ export default function StakeholdersPage() {
   }, [fetchStakeholders, query]);
 
   async function remove(id: string) {
-    await fetch("/api/stakeholders", {
+    await fetch("/api/people", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
@@ -104,7 +107,7 @@ export default function StakeholdersPage() {
       <div className="hq-rise flex flex-wrap justify-between items-end gap-4 mb-8" style={rise(0)}>
         <div>
           <div className="eyebrow mb-2">Relationships</div>
-          <h1 className="text-[32px] font-semibold tracking-[-0.025em] leading-none text-[var(--text)]">Stakeholders</h1>
+          <h1 className="text-[32px] font-semibold tracking-[-0.025em] leading-none text-[var(--text)]">People</h1>
         </div>
         <div className="flex items-center gap-2">
           {syncMsg && <span className="text-[12px] text-[var(--text-3)]">{syncMsg}</span>}
@@ -276,6 +279,20 @@ function DetailPanel({
 
           <LogInteractionForm stakeholderId={stakeholder.id} onLogged={onLogged} />
 
+          {(stakeholder.delegatedTasks?.length ?? 0) > 0 && (
+            <div>
+              <div className="eyebrow mb-2">Delegated Tasks</div>
+              <div className="space-y-1.5">
+                {stakeholder.delegatedTasks!.map((t) => (
+                  <div key={t.id} className="flex items-center gap-2 border border-[var(--line)] rounded-[var(--r-sm)] px-3 py-2 bg-[var(--surface-1)]">
+                    <span className="text-[12.5px] text-[var(--text-2)] leading-snug flex-1 min-w-0 truncate">{t.name}</span>
+                    <Pill tone={t.status === "Blocked" ? "down" : t.status === "In progress" ? "accent" : "neutral"}>{t.status}</Pill>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div>
             <div className="eyebrow mb-2">Recent Touchpoints</div>
             {stakeholder.interactions.length === 0 ? (
@@ -327,6 +344,8 @@ function EditStakeholderForm({
     importance: stakeholder.importance || "normal",
     cadenceDays: stakeholder.cadenceDays != null ? String(stakeholder.cadenceDays) : "",
     notes: stakeholder.notes || "",
+    oneOnOneDocUrl: stakeholder.oneOnOneDocUrl || "",
+    isDirectReport: Boolean(stakeholder.isDirectReport),
   });
   const [saving, setSaving] = useState(false);
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -334,10 +353,11 @@ function EditStakeholderForm({
   async function save() {
     if (!form.name.trim()) return;
     setSaving(true);
-    await fetch("/api/stakeholders", {
+    const { isDirectReport, ...rest } = form;
+    await fetch("/api/people", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: stakeholder.id, ...form }),
+      body: JSON.stringify({ id: stakeholder.id, ...rest, isDirectReport }),
     }).catch(() => {});
     setSaving(false);
     onDone();
@@ -386,10 +406,23 @@ function EditStakeholderForm({
           <input type="number" value={form.cadenceDays} onChange={(e) => set("cadenceDays", e.target.value)} placeholder="e.g. 30" className={inputCls} />
         </div>
         <div className="sm:col-span-2">
+          <div className="eyebrow !text-[9.5px] mb-1.5">1:1 Doc URL</div>
+          <input value={form.oneOnOneDocUrl} onChange={(e) => set("oneOnOneDocUrl", e.target.value)} placeholder="https://docs.google.com/…" className={inputCls} />
+        </div>
+        <div className="sm:col-span-2">
           <div className="eyebrow !text-[9.5px] mb-1.5">Notes</div>
           <textarea rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Context — how you met, what they care about…" className={inputCls} />
         </div>
       </div>
+      <label className="flex items-center gap-2 text-[12.5px] text-[var(--text-2)] cursor-pointer select-none mb-3">
+        <input
+          type="checkbox"
+          checked={form.isDirectReport}
+          onChange={(e) => setForm((f) => ({ ...f, isDirectReport: e.target.checked }))}
+          className="accent-[var(--accent)]"
+        />
+        Direct report — show on the My Team hub
+      </label>
       <div className="flex gap-2">
         <Button variant="primary" size="sm" onClick={save} disabled={saving}>Save Changes</Button>
         <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
@@ -407,7 +440,7 @@ function LogInteractionForm({ stakeholderId, onLogged }: { stakeholderId: string
   async function save() {
     if (!form.summary.trim()) return;
     setSaving(true);
-    await fetch("/api/stakeholders/interactions", {
+    await fetch("/api/people/interactions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...form, stakeholderId }),
@@ -469,17 +502,19 @@ function AddStakeholderForm({ onDone, onCancel }: { onDone: () => void; onCancel
   const [form, setForm] = useState({
     name: "", organization: "", title: "", type: "partner",
     email: "", phone: "", importance: "normal", cadenceDays: "", notes: "",
+    oneOnOneDocUrl: "",
   });
+  const [isDirectReport, setIsDirectReport] = useState(false);
   const [saving, setSaving] = useState(false);
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   async function save() {
     if (!form.name.trim()) return;
     setSaving(true);
-    await fetch("/api/stakeholders", {
+    await fetch("/api/people", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, isDirectReport }),
     }).catch(() => {});
     setSaving(false);
     onDone();
@@ -526,11 +561,24 @@ function AddStakeholderForm({ onDone, onCancel }: { onDone: () => void; onCancel
           <div className="eyebrow !text-[9.5px] mb-1.5">Phone</div>
           <input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="(215) 555-0100" className={inputCls} />
         </div>
+        <div className="sm:col-span-2">
+          <div className="eyebrow !text-[9.5px] mb-1.5">1:1 Doc URL</div>
+          <input value={form.oneOnOneDocUrl} onChange={(e) => set("oneOnOneDocUrl", e.target.value)} placeholder="https://docs.google.com/…" className={inputCls} />
+        </div>
         <div className="sm:col-span-3">
           <div className="eyebrow !text-[9.5px] mb-1.5">Notes</div>
-          <textarea rows={2} value={form.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Context — how you met, what they care about…" className={inputCls} />
+          <textarea rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Context — how you met, what they care about…" className={inputCls} />
         </div>
       </div>
+      <label className="flex items-center gap-2 text-[12.5px] text-[var(--text-2)] cursor-pointer select-none mb-3">
+        <input
+          type="checkbox"
+          checked={isDirectReport}
+          onChange={(e) => setIsDirectReport(e.target.checked)}
+          className="accent-[var(--accent)]"
+        />
+        Direct report — show on the My Team hub
+      </label>
       <div className="flex gap-2">
         <Button variant="primary" onClick={save} disabled={saving}>Add Person</Button>
         <Button variant="ghost" onClick={onCancel}>Cancel</Button>

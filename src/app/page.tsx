@@ -12,11 +12,11 @@ import {
   Mail,
   Phone,
   CalendarDays,
+  MapPin,
 } from "lucide-react";
 import { AGENT_NAME } from "@/lib/agent-name";
 import { MetricCard } from "@/components/ui/metric-card";
 import { HermesBriefing } from "@/components/hermes-briefing";
-import { ApprovalInbox } from "@/components/approval-inbox";
 
 // ── Types ─────────────────────────────────────────────────
 interface TriageEmail { id: string; subject: string; senderName?: string | null; priority: string; receivedAt: string }
@@ -249,6 +249,103 @@ function HermesKanbanPanel({ kanban }: { kanban: HomeData["hermesKanban"] }) {
   );
 }
 
+// ── Today's schedule ─────────────────────────────────────
+interface CalEvent { id: string; title: string; start: string; end: string; allDay: boolean; location: string | null; meetLink: string | null }
+interface DayBucket { date: string; weekday: string; dayOfMonth: number; isToday: boolean; events: CalEvent[] }
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function compactTime(iso: string) {
+  const t = new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return t.replace(":00", "").replace(" AM", "a").replace(" PM", "p");
+}
+
+const SCHEDULE_ACCENT = "#818cf8";
+
+function TodaySchedule() {
+  const [events, setEvents] = useState<CalEvent[] | null>(null);
+  const [failed, setFailed] = useState<"auth" | "error" | null>(null);
+  const [now, setNow] = useState<number | null>(null);
+
+  useEffect(() => {
+    const load = () =>
+      fetch(`/api/calendar/week?start=${todayKey()}`)
+        .then(async (r) => ({ ok: r.ok, body: await r.json().catch(() => ({})) }))
+        .then(({ ok, body }) => {
+          if (!ok) {
+            setFailed(body.needsReconnect ? "auth" : "error");
+            setEvents(null);
+          } else {
+            setFailed(null);
+            const today = ((body.days ?? []) as DayBucket[]).find((x) => x.isToday);
+            setEvents(today ? today.events : []);
+          }
+        })
+        .catch(() => setFailed("error"));
+    load();
+    const iv = setInterval(load, 60_000);
+    const tick = setTimeout(() => setNow(Date.now()), 50);
+    const tickIv = setInterval(() => setNow(Date.now()), 30_000);
+    return () => { clearInterval(iv); clearTimeout(tick); clearInterval(tickIv); };
+  }, []);
+
+  return (
+    <div className="panel flex flex-col p-6 h-full">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="w-3.5 h-3.5" style={{ color: SCHEDULE_ACCENT }} />
+          <span className="eyebrow">Today&apos;s Schedule</span>
+        </div>
+        <Link href="/calendar" className="text-[11px] text-[var(--hq-text-faint)] hover:text-[var(--hq-text-dim)] transition-colors">Open calendar</Link>
+      </div>
+
+      {failed === "auth" && (
+        <Empty>Google not connected. <Link href="/calendar" className="underline hover:text-[var(--hq-text-dim)]">Connect</Link></Empty>
+      )}
+      {failed === "error" && <Empty>Calendar unavailable right now.</Empty>}
+      {!failed && events === null && <Empty>Loading schedule…</Empty>}
+      {!failed && events?.length === 0 && <Empty>Nothing scheduled today.</Empty>}
+
+      {!failed && events && events.length > 0 && (
+        <div>
+          {events.map((ev) => {
+            const s = new Date(ev.start).getTime();
+            const e = new Date(ev.end).getTime();
+            const isNow = now !== null && !ev.allDay && now >= s && now < e;
+            const isPast = now !== null && !ev.allDay && now >= e;
+            return (
+              <div key={ev.id}
+                className="flex items-start gap-3 py-2.5 border-b border-[var(--hq-hairline)] last:border-0 rounded-lg -mx-2 px-2"
+                style={isNow ? { background: `color-mix(in srgb, ${SCHEDULE_ACCENT} 9%, transparent)` } : undefined}>
+                <span className="num text-[11px] w-[92px] shrink-0 pt-[1px]" style={{ color: isPast ? "var(--hq-text-ghost)" : isNow ? SCHEDULE_ACCENT : "var(--hq-text-faint)" }}>
+                  {ev.allDay ? "all-day" : `${compactTime(ev.start)}–${compactTime(ev.end)}`}
+                </span>
+                <span className="mt-[7px] w-1.5 h-1.5 rounded-full shrink-0" style={{ background: isPast ? "var(--hq-text-ghost)" : isNow ? SCHEDULE_ACCENT : "color-mix(in srgb, var(--hq-text-faint) 55%, transparent)", opacity: isPast ? 0.5 : 1 }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] leading-snug line-clamp-1 transition-colors" style={{ color: isPast ? "var(--hq-text-ghost)" : isNow ? "var(--hq-text)" : "var(--hq-text-dim)" }}>
+                    {ev.title || "(no title)"}
+                    {isNow && <span className="num ml-2 text-[10px] font-medium align-middle" style={{ color: SCHEDULE_ACCENT }}>now</span>}
+                  </p>
+                  {ev.location && <p className="text-[11px] text-[var(--hq-text-ghost)] truncate flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3 shrink-0" />{ev.location}</p>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {!failed && events && events.length > 0 && (
+        <div className="mt-auto pt-4 num text-[11px] text-[var(--hq-text-ghost)]">
+          {events.filter((ev) => !ev.allDay && now !== null && new Date(ev.start).getTime() > (now ?? 0)).length} still ahead today
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main ──────────────────────────────────────────────────
 export default function Dashboard() {
   const [data, setData] = useState<HomeData>(EMPTY);
@@ -332,13 +429,13 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* ── Brief + Approval inbox (side-by-side on wide) ─ */}
+        {/* ── Brief + Today's schedule (side-by-side on wide) ─ */}
         <div className="mt-5 grid grid-cols-1 xl:grid-cols-3 gap-5 items-start">
           <div className="xl:col-span-2 hq-rise" style={rise(5)}>
             <HermesBriefing />
           </div>
           <div className="xl:col-span-1 hq-rise" style={rise(6)}>
-            <ApprovalInbox compact />
+            <TodaySchedule />
           </div>
         </div>
 

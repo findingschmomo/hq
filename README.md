@@ -56,6 +56,8 @@ environment variables.
 - Chief-of-Staff daily brief, generated on a schedule
 
 **Director's tools**
+- **Calendar** (`/calendar`) — read-only weekly view of your Google Calendar,
+  powered by the same Google connection as Email Triage
 - **Email Triage** (`/email-triage`) — pull recent Gmail into the board with one click,
   let your Hermes agent auto-classify everything (category, priority, summary, next
   action), and reply without leaving the dashboard. One-time setup:

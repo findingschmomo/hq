@@ -14,6 +14,7 @@ import {
   Users,
   Menu,
   X,
+  CalendarDays,
 } from "lucide-react";
 import { AGENT_NAME } from "@/lib/agent-name";
 
@@ -30,6 +31,7 @@ const navGroups = [
     name: "Work",
     items: [
       { href: "/email-triage", label: "Email Triage", icon: Inbox },
+      { href: "/calendar", label: "Calendar", icon: CalendarDays },
       { href: "/kpis", label: "KPIs", icon: BarChart3 },
       { href: "/stakeholders", label: "Stakeholders", icon: Users },
       { href: "/ideas", label: "Ideas", icon: Lightbulb },

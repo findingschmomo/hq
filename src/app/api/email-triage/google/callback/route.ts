@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { clearGoogleTokenCache } from "@/lib/gmail";
 
 export const dynamic = "force-dynamic";
 
@@ -11,12 +12,20 @@ async function handle(req: Request) {
   const state = url.searchParams.get("state");
   const error = url.searchParams.get("error");
 
-  const fail = (reason: string) =>
-    NextResponse.redirect(new URL(`/email-triage?google=${encodeURIComponent(reason)}`, url.origin));
+  const cookies = req.headers.get("cookie") ?? "";
+  // where should the user land afterwards? (set by /connect?returnTo=…)
+  const returnRaw = cookies.match(/google-return=([^;]+)/)?.[1];
+  const returnTo = returnRaw && decodeURIComponent(returnRaw).startsWith("/") ? decodeURIComponent(returnRaw) : "/email-triage";
+
+  const fail = (reason: string) => {
+    const res = NextResponse.redirect(new URL(`${returnTo}?google=${encodeURIComponent(reason)}`, url.origin));
+    res.cookies.delete("google-return");
+    return res;
+  };
 
   if (error) return fail(`denied:${error}`);
   if (!code) return fail("missing_code");
-  if (!state || state !== req.headers.get("cookie")?.match(/gmail-oauth-state=([^;]+)/)?.[1]) {
+  if (!state || state !== cookies.match(/gmail-oauth-state=([^;]+)/)?.[1]) {
     return fail("bad_state");
   }
 
@@ -56,7 +65,12 @@ async function handle(req: Request) {
       create: { key: "gmail-oauth", data: { refreshToken: tokens.refresh_token, email } },
     });
 
-    return NextResponse.redirect(new URL("/email-triage?google=connected", url.origin));
+    // new consent may carry new scopes — drop any cached access token
+    clearGoogleTokenCache();
+
+    const res = NextResponse.redirect(new URL(`${returnTo}?google=connected`, url.origin));
+    res.cookies.delete("google-return");
+    return res;
   } catch {
     return fail("unexpected_error");
   }

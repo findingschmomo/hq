@@ -15,6 +15,11 @@ type TokenCache = { accessToken: string; expiresAt: number };
 
 let cachedToken: TokenCache | null = null;
 
+/** Called after a fresh OAuth consent so stale access tokens aren't reused. */
+export function clearGoogleTokenCache() {
+  cachedToken = null;
+}
+
 export async function getConnectedAccount(): Promise<StoredAuth | null> {
   const row = await prisma.dataStore.findUnique({ where: { key: "gmail-oauth" } });
   if (!row) return null;
@@ -55,6 +60,11 @@ async function getAccessToken(): Promise<string> {
     expiresAt: Date.now() + (json.expires_in ?? 3600) * 1000,
   };
   return cachedToken.accessToken;
+}
+
+/** Exposed for other Google APIs (e.g. Calendar) sharing the same consent. */
+export async function getGoogleAccessToken(): Promise<string> {
+  return getAccessToken();
 }
 
 async function gmailFetch(path: string, init?: RequestInit): Promise<Response> {

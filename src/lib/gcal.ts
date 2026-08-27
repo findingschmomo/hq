@@ -45,11 +45,30 @@ async function calFetch(path: string): Promise<Response> {
   });
 }
 
-/** Events on the primary calendar between two ISO timestamps. */
-export async function listEvents(timeMinISO: string, timeMaxISO: string): Promise<CalEvent[]> {
+export interface CalendarInfo {
+  id: string;
+  summary: string;
+  backgroundColor?: string;
+  primary?: boolean;
+}
+
+export async function listCalendars(): Promise<CalendarInfo[]> {
+  if (!(await getConnectedAccount())) throw new CalendarNotReadyError("Google not connected", true);
+  const res = await calFetch("/users/me/calendarList");
+  if (res.status === 401 || res.status === 403) {
+    throw new CalendarNotReadyError("Calendar permission missing — reconnect to grant access", true);
+  }
+  if (!res.ok) throw new Error(`Calendar list failed (${res.status})`);
+  const data = (await res.json()) as { items?: { id: string; summary?: string; backgroundColor?: string; primary?: boolean }[] };
+  return (data.items ?? []).map((c) => ({ id: c.id, summary: c.summary || c.id, backgroundColor: c.backgroundColor, primary: c.primary }));
+}
+
+/** Events on a calendar between two ISO timestamps (defaults to primary). */
+export async function listEvents(timeMinISO: string, timeMaxISO: string, calendarId = "primary"): Promise<CalEvent[]> {
   if (!(await getConnectedAccount())) {
     throw new CalendarNotReadyError("Google not connected", true);
   }
+  const cid = encodeURIComponent(calendarId);
   const params = new URLSearchParams({
     timeMin: timeMinISO,
     timeMax: timeMaxISO,
@@ -57,7 +76,7 @@ export async function listEvents(timeMinISO: string, timeMaxISO: string): Promis
     orderBy: "startTime",
     maxResults: "250",
   });
-  const res = await calFetch(`/calendars/primary/events?${params}`);
+  const res = await calFetch(`/calendars/${cid}/events?${params}`);
   if (res.status === 401 || res.status === 403) {
     // Distinguish "API not enabled in Cloud project" from "scope not granted"
     let reason = "";

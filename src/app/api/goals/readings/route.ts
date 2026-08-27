@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// POST /api/kpis/readings — record a value for a KPI
+// POST /api/goals/readings — record a value for a goal
 export async function POST(req: Request) {
   const body = await req.json();
   if (!body.kpiId || body.value === undefined || body.value === "") {

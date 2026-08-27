@@ -65,7 +65,7 @@ model EmailItem {
   priority    String    @default("medium") // high | medium | low
   status      String    @default("triage") // triage | in_progress | waiting | done | archived
   summary     String?   @db.Text
-  actionNote  String?   // what needs to happen next
+  actionNote  String? // what needs to happen next
   dueDate     DateTime?
   assignedTo  String?
   notes       String?   @db.Text
@@ -74,8 +74,10 @@ model EmailItem {
   updatedAt   DateTime  @updatedAt
 
   // Gmail integration
-  gmailId     String?   @unique // Gmail message id (dedupes synced mail)
-  threadId    String?   // Gmail thread id (keeps replies in-thread)
+  gmailId  String? @unique // Gmail message id (dedupes synced mail)
+  threadId String? // Gmail thread id (keeps replies in-thread)
+
+  sourcedTasks Task[] // tasks extracted from this email by auto-triage
 
   @@index([status])
   @@index([priority])
@@ -83,7 +85,7 @@ model EmailItem {
   @@index([category])
 }
 
-// ─── KPI Database ────────────────────────────────────────────────
+// ─── Goals Database (personal + team) ────────────────────────────
 
 model Kpi {
   id          String       @id @default(cuid())
@@ -93,13 +95,16 @@ model Kpi {
   unit        String       @default("number") // number | percent | currency | hours
   target      Float?
   direction   String       @default("up") // "up" = higher is better, "down" = lower is better
-  frequency   String       @default("monthly") // weekly | monthly | quarterly
-  owner       String?      // staff member responsible
+  frequency   String       @default("monthly") // weekly | monthly | quarterly | yearly
+  owner       String? // free-text owner label (display fallback)
+  ownerId     String? // link to the person responsible; null = personal goal (you)
+  ownerRef    Stakeholder? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   archived    Boolean      @default(false)
   readings    KpiReading[]
 
   @@index([category])
   @@index([archived])
+  @@index([ownerId])
 }
 
 model KpiReading {
@@ -118,24 +123,40 @@ model KpiReading {
 // ─── Stakeholder & Staff Communication Tracking ──────────────────
 
 model Stakeholder {
-  id               String                 @id @default(cuid())
-  name             String
-  organization     String?
-  title            String?
-  type             String                 @default("partner") // staff | board | funder | partner | student | government | vendor | other
-  email            String?
-  phone            String?
-  importance       String                 @default("normal") // high | normal | low
-  cadenceDays      Int?                   // target days between touches (e.g. 30)
-  notes            String?                @db.Text
-  lastContactAt    DateTime?
-  archived         Boolean                @default(false)
-  isDirectReport   Boolean                @default(false)
-  oneOnOneDocUrl   String?
-  interactions     StakeholderInteraction[]
-  delegatedTasks   Task[]
-  metrics          CoordinatorMetric[]
+  id             String                   @id @default(cuid())
+  name           String
+  organization   String?
+  title          String?
+  type           String                   @default("partner") // staff | board | funder | partner | student | government | vendor | other
+  email          String?
+  phone          String?
+  importance     String                   @default("normal") // high | normal | low
+  cadenceDays    Int? // target days between touches (e.g. 30)
+  notes          String?                  @db.Text
+  lastContactAt  DateTime?
+  archived       Boolean                  @default(false)
+  isDirectReport Boolean                  @default(false)
+  oneOnOneDocUrl String?
+  interactions   StakeholderInteraction[]
+  delegatedTasks Task[]
+  metrics        CoordinatorMetric[]
+  goals          Kpi[]
 
+  // School assignment: a staff member can be assigned to one school
+  // (Stakeholder with type="school"). Goals owned by either the member or
+  // the school are shared across both.
+  schoolId String?
+  school   Stakeholder?  @relation("SchoolAssignment", fields: [schoolId], references: [id], onDelete: SetNull)
+  members  Stakeholder[] @relation("SchoolAssignment")
+
+  // Pod assignment: schools belong to one Pod; directors lead one Pod
+  podId         String?
+  pod           Pod?           @relation("PodSchools", fields: [podId], references: [id], onDelete: SetNull)
+  directedPods  Pod[]          @relation("PodDirector")
+  schoolProfile SchoolProfile? @relation("SchoolProfile")
+
+  @@index([podId])
+  @@index([schoolId])
   @@index([type])
   @@index([archived])
   @@index([lastContactAt])
@@ -151,7 +172,7 @@ model StakeholderInteraction {
   followUpNeeded Boolean     @default(false)
   followUpDate   DateTime?
   followUpDone   Boolean     @default(false)
-  sentiment      String?     // positive | neutral | negative
+  sentiment      String? // positive | neutral | negative
   createdAt      DateTime    @default(now())
   stakeholder    Stakeholder @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
 
@@ -187,6 +208,8 @@ model Task {
   delegateeId   String?
   delegatee     Stakeholder? @relation(fields: [delegateeId], references: [id], onDelete: SetNull)
   blockedReason String?
+  sourceEmailId String?
+  sourceEmail   EmailItem?   @relation(fields: [sourceEmailId], references: [id], onDelete: SetNull)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
@@ -200,7 +223,7 @@ model CoordinatorMetric {
   id            String      @id @default(cuid())
   stakeholderId String
   stakeholder   Stakeholder @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
-  name          String      // e.g. "Students enrolled", "Programs run"
+  name          String // e.g. "Students enrolled", "Programs run"
   value         Float
   unit          String?
   recordedAt    DateTime    @default(now())
@@ -225,12 +248,12 @@ model DataStore {
 
 model AgentRequest {
   id            String    @id @default(cuid())
-  origin        String    @default("web")     // "web" | "hermes"
+  origin        String    @default("web") // "web" | "hermes"
   kind          String    @default("oneshot") // "oneshot" | "kanban" | "chat"
   title         String
   prompt        String?
   sideEffecting Boolean   @default(false)
-  status        String    @default("queued")  // queued | awaiting_approval | approved | running | done | failed | rejected
+  status        String    @default("queued") // queued | awaiting_approval | approved | running | done | failed | rejected
   result        String?
   error         String?
   hermesTaskId  String?
@@ -250,7 +273,7 @@ model AgentEvent {
   title     String
   detail    String?
   agent     String?
-  level     String   @default("info")     // info | up | warn | down
+  level     String   @default("info") // info | up | warn | down
   meta      Json?
   createdAt DateTime @default(now())
 
@@ -258,7 +281,7 @@ model AgentEvent {
 }
 
 model HermesTask {
-  id        String   @id                   // Hermes task id
+  id        String   @id // Hermes task id
   board     String   @default("default")
   title     String
   assignee  String?
@@ -274,8 +297,8 @@ model HermesTask {
 
 // ─── Hermes Memory Wiki (warm tier — git-tracked markdown, mirrored) ─────
 model HermesMemory {
-  id         String    @id            // wiki entry slug (relative path w/o .md)
-  path       String                   // file path relative to wiki root
+  id         String    @id // wiki entry slug (relative path w/o .md)
+  path       String // file path relative to wiki root
   type       String    @default("fact")
   title      String
   status     String    @default("active")
@@ -291,4 +314,85 @@ model HermesMemory {
 
   @@index([type])
   @@index([status])
+}
+
+// ─── Weekly Update Emails ─────────────────────────────────────────
+model WeeklyUpdate {
+  id             String    @id @default(cuid())
+  weekOf         DateTime  @db.Date // Monday of that week
+  subject        String
+  bodyHtml       String    @db.Text
+  bodyText       String    @db.Text
+  curriculumText String?   @db.Text // editable curriculum expectations
+  personalNote   String?   @db.Text // custom note from sender
+  gifUrl         String? // fun GIF URL (Giphy, Tenor, etc.)
+  visitsOverride Json? // { schoolName: boolean } for manual visit toggles
+  recipients     Json // [{ id, name, email }] snapshot at send time
+  status         String    @default("draft") // draft | sent
+  sentAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // ── Canva template fields ──────────────────────────────────
+  introText      String? @db.Text // [[intro text]] - now navy, centered wide, below GIF
+  dataAsks       String? @db.Text // [[Data Asks]]
+  importantLinks String? @db.Text // [[Important Links]]
+  prioritiesText String? @db.Text // hybrid: manual override for Priorities bubble (null = auto)
+  upcomingManual String? @db.Text // manual Upcoming Events override (supplements calendar)
+  calendarId     String? // selected Google Calendar for Upcoming Events (e.g. Programming Calendar)
+  calendarName   String? // cached display name of selected calendar
+  hiddenEventIds Json? // string[] of Google Calendar event IDs hidden for this week
+  sideImageUrl   String? // picture for right column above priorities
+  sideImagePos   String? @default("50% 50%") // object-position for side image (e.g. "30% 20%")
+  sideImageScale Int?    @default(100) // zoom % 50-200
+
+  @@unique([weekOf])
+  @@index([status])
+}
+
+// ─── Coordinator Pods & Site ──────────────────────────────────────
+model Pod {
+  id         String        @id @default(cuid())
+  name       String        @unique // e.g. "Pod 1 — Kelly Smemo"
+  directorId String? // Stakeholder id for the Director
+  director   Stakeholder?  @relation("PodDirector", fields: [directorId], references: [id], onDelete: SetNull)
+  schools    Stakeholder[] @relation("PodSchools")
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([directorId])
+}
+
+model SchoolProfile {
+  id           String      @id @default(cuid())
+  schoolId     String      @unique // Stakeholder id where type=school
+  school       Stakeholder @relation("SchoolProfile", fields: [schoolId], references: [id], onDelete: Cascade)
+  enrollment   Int?
+  grades       String? // e.g. "9-12"
+  principal    String?
+  address      String?
+  bellSchedule String?     @db.Text // link or text
+  facts        String?     @db.Text // free-form facts about the school
+  website      String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Resource {
+  id        String   @id @default(cuid())
+  title     String
+  url       String
+  category  String   @default("general") // curriculum | data | ops | forms | pd | general
+  tags      String[] @default([])
+  forScope  String   @default("all") // all | pod | school — who sees it
+  podId     String? // if forScope=pod, which Pod
+  schoolId  String? // if forScope=school, which school
+  featured  Boolean  @default(false) // show in weekly Important Links
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([forScope])
+  @@index([featured])
 }

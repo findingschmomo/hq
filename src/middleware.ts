@@ -10,12 +10,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Skip auth for NextAuth routes, assets, and login
+  // Skip auth for NextAuth routes, assets, login, and public site feeds
   if (
     pathname.startsWith('/api/auth/') ||
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/favicon.ico') ||
-    pathname === '/login'
+    pathname === '/login' ||
+    pathname.startsWith('/api/site') ||
+    pathname.startsWith('/api/pods') ||
+    (pathname.startsWith('/api/resources') && request.method === 'GET')
   ) {
     return NextResponse.next();
   }

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // registered as an authorized redirect URI on the same OAuth client.
 const SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
-  "https://www.googleapis.com/auth/gmail.send",
+  "https://www.googleapis.com/auth/gmail.compose",
   "https://www.googleapis.com/auth/calendar.readonly",
 ].join(" ");
 
@@ -20,7 +20,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "GOOGLE_CLIENT_ID is not configured" }, { status: 500 });
   }
 
-  const origin = new URL(req.url).origin;
+  const proto = req.headers.get("x-forwarded-proto") || "http";
+  const host = req.headers.get("x-forwarded-host") || new URL(req.url).host;
+  const origin = `${proto}://${host}`;
   const state = randomUUID();
   // optional ?returnTo=/calendar so the callback drops the user back where
   // they started; only allow in-app paths.
@@ -33,7 +35,9 @@ export async function GET(req: Request) {
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set("scope", SCOPES);
   authUrl.searchParams.set("access_type", "offline"); // need a refresh token
-  authUrl.searchParams.set("prompt", "consent"); // force refresh token every time
+  // force refresh token every time AND show the account picker so the
+  // correct Google account can be chosen
+  authUrl.searchParams.set("prompt", "consent select_account");
   authUrl.searchParams.set("state", state);
 
   const res = NextResponse.redirect(authUrl.toString());

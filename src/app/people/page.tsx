@@ -35,9 +35,17 @@ interface Stakeholder {
   needsContact: boolean;
 }
 
-const TYPES = ["staff", "board", "funder", "partner", "student", "government", "vendor", "other"];
+const TYPES = ["staff", "board", "funder", "partner", "school", "student", "government", "vendor", "other"];
 const CHANNELS = ["email", "call", "meeting", "text", "event", "other"];
+const TASK_STATUSES = ["Not started", "In progress", "Blocked", "Done"];
 const importanceTone: Record<string, "down" | "warn" | "neutral"> = { high: "down", normal: "neutral", low: "neutral" };
+
+function statusColor(status: string) {
+  if (status === "Done") return "var(--up)";
+  if (status === "Blocked") return "var(--down)";
+  if (status === "In progress") return "var(--accent)";
+  return "var(--text-3)";
+}
 
 export default function PeoplePage() {
   const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
@@ -241,6 +249,20 @@ function DetailPanel({
 }) {
   const [editing, setEditing] = useState(false);
 
+  async function changeTaskStatus(taskId: string, status: string) {
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: taskId, status }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      onLogged();
+    } catch (e) {
+      console.error("Failed to update delegated task", e);
+    }
+  }
+
   return (
     <div className="hq-rise panel p-6 h-fit lg:sticky lg:top-8 space-y-5" style={{ animationDelay: "120ms" }}>
       {editing ? (
@@ -286,7 +308,15 @@ function DetailPanel({
                 {stakeholder.delegatedTasks!.map((t) => (
                   <div key={t.id} className="flex items-center gap-2 border border-[var(--line)] rounded-[var(--r-sm)] px-3 py-2 bg-[var(--surface-1)]">
                     <span className="text-[12.5px] text-[var(--text-2)] leading-snug flex-1 min-w-0 truncate">{t.name}</span>
-                    <Pill tone={t.status === "Blocked" ? "down" : t.status === "In progress" ? "accent" : "neutral"}>{t.status}</Pill>
+                    <select
+                      value={t.status}
+                      onChange={(e) => changeTaskStatus(t.id, e.target.value)}
+                      title="Change status"
+                      className="text-[11px] font-medium bg-[var(--surface-1)] rounded-[var(--r-sm)] px-1.5 py-1 border border-[var(--line)] focus:outline-none focus:border-[var(--line-strong)] cursor-pointer shrink-0"
+                      style={{ color: statusColor(t.status) }}
+                    >
+                      {TASK_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
                   </div>
                 ))}
               </div>
@@ -346,9 +376,19 @@ function EditStakeholderForm({
     notes: stakeholder.notes || "",
     oneOnOneDocUrl: stakeholder.oneOnOneDocUrl || "",
     isDirectReport: Boolean(stakeholder.isDirectReport),
+    schoolId: (stakeholder as { schoolId?: string | null }).schoolId || "",
   });
+  const [schools, setSchools] = useState<{ id: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  // schools list for assignment picker
+  useEffect(() => {
+    fetch("/api/people?type=school")
+      .then((r) => r.json())
+      .then((d) => setSchools((d.stakeholders || []).filter((s: { id: string }) => s.id !== stakeholder.id)))
+      .catch(() => {});
+  }, [stakeholder.id]);
 
   async function save() {
     if (!form.name.trim()) return;
@@ -385,6 +425,15 @@ function EditStakeholderForm({
             {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
+        {form.type !== "school" && (
+          <div>
+            <div className="eyebrow !text-[9.5px] mb-1.5">Assigned school</div>
+            <select value={form.schoolId} onChange={(e) => set("schoolId", e.target.value)} className={inputCls}>
+              <option value="">— none —</option>
+              {schools.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+        )}
         <div>
           <div className="eyebrow !text-[9.5px] mb-1.5">Email</div>
           <input value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="name@org.org" className={inputCls} />

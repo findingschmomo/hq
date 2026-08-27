@@ -12,13 +12,17 @@ async function handle(req: Request) {
   const state = url.searchParams.get("state");
   const error = url.searchParams.get("error");
 
+  const proto = req.headers.get("x-forwarded-proto") || "http";
+  const host = req.headers.get("x-forwarded-host") || url.host;
+  const origin = `${proto}://${host}`;
+
   const cookies = req.headers.get("cookie") ?? "";
   // where should the user land afterwards? (set by /connect?returnTo=…)
   const returnRaw = cookies.match(/google-return=([^;]+)/)?.[1];
   const returnTo = returnRaw && decodeURIComponent(returnRaw).startsWith("/") ? decodeURIComponent(returnRaw) : "/email-triage";
 
   const fail = (reason: string) => {
-    const res = NextResponse.redirect(new URL(`${returnTo}?google=${encodeURIComponent(reason)}`, url.origin));
+    const res = NextResponse.redirect(new URL(`${returnTo}?google=${encodeURIComponent(reason)}`, origin));
     res.cookies.delete("google-return");
     return res;
   };
@@ -37,7 +41,7 @@ async function handle(req: Request) {
         code,
         client_id: process.env.GOOGLE_CLIENT_ID ?? "",
         client_secret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-        redirect_uri: `${url.origin}/api/email-triage/google/callback`,
+        redirect_uri: `${origin}/api/email-triage/google/callback`,
         grant_type: "authorization_code",
       }),
     });
@@ -68,7 +72,7 @@ async function handle(req: Request) {
     // new consent may carry new scopes — drop any cached access token
     clearGoogleTokenCache();
 
-    const res = NextResponse.redirect(new URL(`${returnTo}?google=connected`, url.origin));
+    const res = NextResponse.redirect(new URL(`${returnTo}?google=connected`, origin));
     res.cookies.delete("google-return");
     return res;
   } catch {

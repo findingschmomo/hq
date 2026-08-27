@@ -80,7 +80,7 @@ export async function PATCH(req: Request) {
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
   const data: Record<string, unknown> = {};
-  for (const key of ["name", "organization", "title", "type", "email", "phone", "importance", "notes", "oneOnOneDocUrl"]) {
+  for (const key of ["name", "organization", "title", "type", "email", "phone", "importance", "notes", "oneOnOneDocUrl", "schoolId"]) {
     if (key in updates) data[key] = updates[key] || null;
   }
   if ("cadenceDays" in updates) data.cadenceDays = updates.cadenceDays ? Number(updates.cadenceDays) : null;

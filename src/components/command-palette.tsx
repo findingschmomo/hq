@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Inbox,
-  BarChart3,
+  Target,
   Users,
   Lightbulb,
   ListChecks,
@@ -20,6 +20,7 @@ import {
   CornerDownLeft,
   Search,
   Check,
+  Mail,
   type LucideIcon,
 } from "lucide-react";
 
@@ -32,7 +33,8 @@ interface NavItem {
 const NAV: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Email Triage", href: "/email-triage", icon: Inbox },
-  { label: "KPIs", href: "/kpis", icon: BarChart3 },
+  { label: "Weekly Update", href: "/weekly", icon: Mail },
+  { label: "Goals", href: "/goals", icon: Target },
   { label: "People", href: "/people", icon: Users },
   { label: "My Team", href: "/team", icon: Users },
   { label: "Tasks", href: "/tasks", icon: ListChecks },

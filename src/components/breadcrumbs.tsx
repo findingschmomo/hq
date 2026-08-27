@@ -8,7 +8,7 @@ const pathLabels: Record<string, string> = {
   "/hermes": "Hermes",
   "/tasks": "Tasks",
   "/email-triage": "Email Triage",
-  "/kpis": "KPIs",
+  "/goals": "Goals",
   "/people": "People",
   "/team": "My Team",
   "/ideas": "Ideas",

@@ -160,17 +160,17 @@ function KpiHighlightsPanel({ kpis }: { kpis: HomeData["kpis"] }) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <BarChart3 className="w-3.5 h-3.5" style={{ color: "#34d399" }} />
-          <span className="eyebrow">KPI Pulse</span>
+          <span className="eyebrow">Goal Pulse</span>
         </div>
-        <Link href="/kpis" className="text-[11px] text-[var(--hq-text-faint)] hover:text-[var(--hq-text-dim)] transition-colors">Open database</Link>
+        <Link href="/goals" className="text-[11px] text-[var(--hq-text-faint)] hover:text-[var(--hq-text-dim)] transition-colors">Open database</Link>
       </div>
 
       {kpis.highlights.length === 0 ? (
-        <Empty>No KPIs with readings yet.</Empty>
+        <Empty>No goals with readings yet.</Empty>
       ) : (
         <div className="space-y-3 mb-2">
           {kpis.highlights.map((k) => (
-            <Link key={k.id} href="/kpis" className="group block">
+            <Link key={k.id} href="/goals" className="group block">
               <div className="flex items-baseline justify-between gap-2 mb-1.5">
                 <p className="text-[12.5px] text-[var(--hq-text-dim)] group-hover:text-[var(--hq-text)] transition-colors truncate">{k.name}</p>
                 <span className="num text-[13px] font-semibold shrink-0" style={{ color: k.onTrack ? "var(--hq-up)" : "var(--hq-warn)" }}>
@@ -418,9 +418,9 @@ export default function Dashboard() {
             icon={<Flag className="w-4 h-4" />} accent="#a78bfa" href="/tasks" loaded={loaded}
           />
           <MetricCard
-            label="KPIs Off Track" value={data.kpis.offTrack}
+            label="Goals Off Track" value={data.kpis.offTrack}
             sub={`${data.kpis.onTrack}/${data.kpis.tracked} on track`}
-            icon={<BarChart3 className="w-4 h-4" />} accent="#34d399" href="/kpis" loaded={loaded}
+            icon={<BarChart3 className="w-4 h-4" />} accent="#34d399" href="/goals" loaded={loaded}
           />
           <MetricCard
             label="Due for Contact" value={data.stakeholders.needsContact}

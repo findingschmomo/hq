@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, FileText, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, FileText, Mail, Plus, School, Trash2, X } from "lucide-react";
 import { Button, EmptyState, Pill, Skeleton, rise } from "@/components/ui/kit";
 
 interface Metric {
@@ -13,6 +13,24 @@ interface Metric {
   note?: string | null;
 }
 
+interface GoalReading {
+  id: string;
+  value: number;
+  periodStart: string;
+}
+
+interface Goal {
+  id: string;
+  name: string;
+  category: string;
+  unit: string;
+  target?: number | null;
+  direction: string;
+  frequency: string;
+  readings: GoalReading[];
+  sharedFromName?: string | null;
+}
+
 interface Interaction {
   id: string;
   channel: string;
@@ -21,7 +39,7 @@ interface Interaction {
   date: string;
 }
 
-interface Coordinator {
+interface Person {
   id: string;
   name: string;
   organization?: string | null;
@@ -34,12 +52,16 @@ interface Coordinator {
   oneOnOneDocUrl?: string | null;
   lastContactAt?: string | null;
   interactions: Interaction[];
-  delegatedTasks: { id: string; name: string; status: string; priority: string; dueDate?: string | null }[];
+  delegatedTasks: { id: string; name: string; status: string; priority: string; dueDate?: string | null; sourceEmail?: { gmailId?: string | null; subject?: string | null } | null }[];
   metrics: Metric[];
+  goals: Goal[];
+  school?: { id: string; name: string } | null;
+  members?: { id: string; name: string }[];
 }
 
 export default function TeamPage() {
-  const [coordinators, setCoordinators] = useState<Coordinator[]>([]);
+  const [coordinators, setCoordinators] = useState<Person[]>([]);
+  const [schools, setSchools] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -48,6 +70,7 @@ export default function TeamPage() {
       const res = await fetch("/api/team");
       const data = await res.json();
       setCoordinators(data.coordinators || []);
+      setSchools(data.schools || []);
     } catch {
       console.error("Failed to fetch team");
     } finally {
@@ -59,7 +82,8 @@ export default function TeamPage() {
     fetchTeam();
   }, [fetchTeam]);
 
-  const selected = coordinators.find((c) => c.id === selectedId) || null;
+  const everyone = [...coordinators, ...schools];
+  const selected = everyone.find((p) => p.id === selectedId) || null;
 
   return (
     <div className="relative z-10 w-full mx-auto pt-4 pb-16">
@@ -73,7 +97,7 @@ export default function TeamPage() {
               <ArrowLeft className="w-3.5 h-3.5" /> My Team
             </button>
           ) : (
-            <div className="eyebrow mb-2">Direct Reports</div>
+            <div className="eyebrow mb-2">Direct Reports & Schools</div>
           )}
           <h1 className="text-[32px] font-semibold tracking-[-0.025em] leading-none text-[var(--text)]">
             {selected ? selected.name : "My Team"}
@@ -81,7 +105,7 @@ export default function TeamPage() {
         </div>
         {!selected && (
           <p className="num text-[11.5px] text-[var(--text-4)]">
-            Flag someone as a direct report on their People card to add them here.
+            Flag reports as “Direct report” and schools as type “school” on their People cards.
           </p>
         )}
       </div>
@@ -92,26 +116,115 @@ export default function TeamPage() {
             <div key={i} className="panel p-5"><Skeleton className="h-4 w-1/2 mb-3" /><Skeleton className="h-3 w-1/3" /></div>
           ))}
         </div>
-      ) : coordinators.length === 0 ? (
+      ) : everyone.length === 0 ? (
         <EmptyState
           icon={<FileText className="w-8 h-8" />}
-          title="No direct reports flagged yet"
-          hint="Open someone on the People page, hit edit, and check “Direct report” — they'll show up here with touchpoints, their 1:1 doc, and metrics."
+          title="Nothing here yet"
+          hint="Open someone on the People page, hit edit, and check “Direct report” — or add your schools as people with type “school”."
         />
       ) : selected ? (
-        <CoordinatorDetail coordinator={selected} onChanged={fetchTeam} />
+        <PersonDetail person={selected} onChanged={fetchTeam} />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {coordinators.map((c, i) => (
-            <CoordinatorCard key={c.id} c={c} delay={i + 1} onClick={() => setSelectedId(c.id)} />
-          ))}
-        </div>
+        <>
+          {schools.length > 0 && (
+            <section className="mb-10">
+              <h2 className="eyebrow mb-3">Schools I Oversee <span className="num text-[10px] opacity-60">{schools.length}</span></h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {schools.map((s, i) => (
+                  <SchoolCard key={s.id} s={s} delay={i + 1} onClick={() => setSelectedId(s.id)} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {coordinators.length > 0 && (
+            <section>
+              <h2 className="eyebrow mb-3">Direct Reports <span className="num text-[10px] opacity-60">{coordinators.length}</span></h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {coordinators.map((c, i) => (
+                  <CoordinatorCard key={c.id} c={c} delay={i + 1} onClick={() => setSelectedId(c.id)} />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
     </div>
   );
 }
 
-function CoordinatorCard({ c, onClick, delay }: { c: Coordinator; onClick: () => void; delay: number }) {
+/** on-track summary for a person's goals → [onTrack, total] or null */
+function goalStatus(g: Goal[]): "up" | "warn" | "down" | null {
+  let worst: "up" | "warn" | "down" | null = null;
+  for (const goal of g) {
+    if (goal.target == null || goal.readings.length === 0) continue;
+    const latest = goal.readings[0].value;
+    const t = goal.target;
+    if (t === 0) continue;
+    const ratio = goal.direction === "down" ? t / latest : latest / t;
+    const st: "up" | "warn" | "down" = ratio >= 1 ? "up" : ratio >= 0.85 ? "warn" : "down";
+    if (st === "down") return "down";
+    if (st === "warn") worst = "warn";
+    else if (!worst) worst = "up";
+  }
+  return worst;
+}
+
+const TASK_STATUSES = ["Not started", "In progress", "Blocked", "Done"];
+
+function statusColor(status: string) {
+  if (status === "Done") return "var(--up)";
+  if (status === "Blocked") return "var(--down)";
+  if (status === "In progress") return "var(--accent)";
+  return "var(--text-3)";
+}
+
+function GoalsMiniPill({ goals }: { goals: Goal[] }) {
+  if (goals.length === 0) return null;
+  const st = goalStatus(goals);
+  const withTargets = goals.filter((g) => g.readings.length > 0).length;
+  return (
+    <Pill tone={st === "up" || st === null ? "up" : st === "warn" ? "warn" : "down"}>
+      {withTargets > 0
+        ? `${goals.filter((g) => goalStatus([g]) === "up").length}/${withTargets} on track`
+        : `${goals.length} goal${goals.length === 1 ? "" : "s"}`}
+    </Pill>
+  );
+}
+
+function SchoolCard({ s, onClick, delay }: { s: Person; onClick: () => void; delay: number }) {
+  const openTasks = s.delegatedTasks.length;
+  const blocked = s.delegatedTasks.filter((t) => t.status === "Blocked").length;
+  return (
+    <button onClick={onClick} className="hq-rise panel w-full text-left p-5 transition-all hover:border-[var(--line-strong)]" style={rise(delay)}>
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold text-[var(--text)] truncate">{s.name}</p>
+          <p className="text-[12px] text-[var(--text-3)] truncate">{s.title || s.organization || "School"}</p>
+        </div>
+        {(s.oneOnOneDocUrl || s.email || s.phone) && <FileText className="w-4 h-4 shrink-0" style={{ color: "var(--accent)" }} />}
+      </div>
+
+      {latestMetrics(s.metrics, 2).map(([name, m]) => (
+        <p key={name} className="text-[12px] text-[var(--text-2)] mb-1">
+          <span className="text-[var(--text-4)]">{name}: </span>
+          <span className="num font-medium">{fmtVal(m.value)}{m.unit ? ` ${m.unit}` : ""}</span>
+        </p>
+      ))}
+
+      <div className="flex items-center justify-between gap-2 pt-2 mt-2 border-t border-[var(--line)]">
+        <span className="num text-[11px] text-[var(--text-3)]">last touch {lastTouchLabel(s.lastContactAt)}</span>
+        <div className="flex items-center gap-1.5">
+          <GoalsMiniPill goals={s.goals} />
+          {blocked > 0 && <Pill tone="down">{blocked} blocked</Pill>}
+          {openTasks > 0 && <Pill tone="neutral">{openTasks} open</Pill>}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function CoordinatorCard({ c, onClick, delay }: { c: Person; onClick: () => void; delay: number }) {
   const openTasks = c.delegatedTasks.length;
   const blocked = c.delegatedTasks.filter((t) => t.status === "Blocked").length;
   return (
@@ -131,9 +244,13 @@ function CoordinatorCard({ c, onClick, delay }: { c: Coordinator; onClick: () =>
         </p>
       ))}
 
-      <div className="flex items-center justify-between gap-2 pt-2 mt-2 border-t border-[var(--line)]">
-        <span className="num text-[11px] text-[var(--text-3)]">last touch {lastTouchLabel(c.lastContactAt)}</span>
+      <div className="flex items-center justify-between gap-2 pt-2 mt-2 border-t border-[var(--line)] flex-wrap">
+        <span className="num text-[11px] text-[var(--text-3)]">
+          {c.school ? <span className="inline-flex items-center gap-1 mr-1.5"><School className="w-3 h-3" />{c.school.name}</span> : null}
+          last touch {lastTouchLabel(c.lastContactAt)}
+        </span>
         <div className="flex items-center gap-1.5">
+          <GoalsMiniPill goals={c.goals} />
           {blocked > 0 && <Pill tone="down">{blocked} blocked</Pill>}
           {openTasks > 0 && <Pill tone="neutral">{openTasks} open</Pill>}
         </div>
@@ -142,7 +259,21 @@ function CoordinatorCard({ c, onClick, delay }: { c: Coordinator; onClick: () =>
   );
 }
 
-function CoordinatorDetail({ coordinator: c, onChanged }: { coordinator: Coordinator; onChanged: () => void }) {
+function PersonDetail({ person: c, onChanged }: { person: Person; onChanged: () => void }) {
+  async function changeTaskStatus(taskId: string, status: string) {
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: taskId, status }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      onChanged();
+    } catch (e) {
+      console.error("Failed to update delegated task", e);
+    }
+  }
+
   const grouped = groupMetrics(c.metrics);
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
@@ -165,6 +296,20 @@ function CoordinatorDetail({ coordinator: c, onChanged }: { coordinator: Coordin
             <p className="text-[12.5px] text-[var(--text-2)] bg-[var(--surface-1)] border border-[var(--line)] rounded-[var(--r-sm)] p-3 leading-relaxed mt-4">{c.notes}</p>
           )}
         </div>
+
+        {c.goals.length > 0 && (
+          <div className="hq-rise panel p-6" style={rise(2)}>
+            <div className="eyebrow mb-3 flex items-center justify-between">
+              <span>Goals</span>
+              <GoalsMiniPill goals={c.goals} />
+            </div>
+            <div className="space-y-2">
+              {c.goals.map((g) => (
+                <GoalRow key={g.id} goal={g} onRecorded={onChanged} />
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="hq-rise panel p-6" style={rise(2)}>
           <div className="eyebrow mb-3">Metrics</div>
@@ -193,7 +338,26 @@ function CoordinatorDetail({ coordinator: c, onChanged }: { coordinator: Coordin
               {c.delegatedTasks.map((t) => (
                 <div key={t.id} className="flex items-center gap-2 border border-[var(--line)] rounded-[var(--r-sm)] px-3 py-2 bg-[var(--surface-1)]">
                   <span className="text-[12.5px] text-[var(--text-2)] leading-snug flex-1 min-w-0 truncate">{t.name}</span>
-                  <Pill tone={t.status === "Blocked" ? "down" : t.status === "In progress" ? "accent" : "neutral"}>{t.status}</Pill>
+                  {t.sourceEmail?.gmailId && (
+                    <a
+                      href={`https://mail.google.com/mail/u/0/#all/${t.sourceEmail.gmailId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-1 rounded-md text-[var(--text-4)] hover:text-[var(--accent)] hover:bg-white/[0.06] transition-colors shrink-0"
+                      title={`From email: ${t.sourceEmail.subject || ""}`}
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                  <select
+                    value={t.status}
+                    onChange={(e) => changeTaskStatus(t.id, e.target.value)}
+                    title="Change status"
+                    className="text-[11px] font-medium bg-[var(--surface-1)] rounded-[var(--r-sm)] px-1.5 py-1 border border-[var(--line)] focus:outline-none focus:border-[var(--line-strong)] cursor-pointer shrink-0"
+                    style={{ color: statusColor(t.status) }}
+                  >
+                    {TASK_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
                 </div>
               ))}
             </div>
@@ -272,8 +436,97 @@ function OneOnOneDoc({ stakeholderId, url, onSaved }: { stakeholderId: string; u
   );
 }
 
-function MetricRow({ name, entries, onChanged }: { name: string; entries: Metric[]; onChanged: () => void }) {
-  const latest = entries[0];
+function GoalRow({ goal: g, onRecorded }: { goal: Goal; onRecorded?: () => void }) {
+  const latest = g.readings[0];
+  const st = goalStatus([g]);
+  const [recording, setRecording] = useState(false);
+  const [val, setVal] = useState("");
+  const [saving, setSaving] = useState(false);
+  const fmt = (v: number) => {
+    if (g.unit === "currency") return "$" + v.toLocaleString("en-US", { maximumFractionDigits: 0 });
+    if (g.unit === "percent") return v.toFixed(1) + "%";
+    if (Number.isInteger(v)) return String(v);
+    return v.toFixed(1);
+  };
+
+  async function save() {
+    const n = parseFloat(val);
+    if (isNaN(n) || saving) return;
+    setSaving(true);
+    const res = await fetch("/api/goals/readings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kpiId: g.id, value: n }),
+    }).catch(() => null);
+    setSaving(false);
+    if (res && res.ok) {
+      setVal("");
+      setRecording(false);
+      onRecorded?.();
+    } else {
+      window.alert("Couldn't record the reading — please try again.");
+    }
+  }
+
+  if (recording) {
+    return (
+      <div className="flex items-center gap-2 border border-[var(--accent)] rounded-[var(--r-sm)] px-3 py-2 bg-[var(--surface-1)]">
+        <span className="text-[12.5px] text-[var(--text-2)] truncate flex-1 min-w-0">{g.name}</span>
+        <input
+          autoFocus
+          type="number"
+          step="any"
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") save();
+            if (e.key === "Escape") { setRecording(false); setVal(""); }
+          }}
+          placeholder={g.unit === "percent" ? "%" : g.unit === "currency" ? "$" : "value"}
+          className="w-20 shrink-0 num text-[12px] bg-[var(--surface-0)] border border-[var(--line-strong)] rounded-md px-2 py-1 text-[var(--text)] outline-none focus:border-[var(--accent)]"
+        />
+        <button onClick={save} disabled={saving || val === ""} className="p-1 rounded-md text-[var(--up)] hover:bg-white/[0.06] disabled:opacity-40 transition-colors" title="Save">
+          <Check className="w-3.5 h-3.5" />
+        </button>
+        <button onClick={() => { setRecording(false); setVal(""); }} className="p-1 rounded-md text-[var(--text-4)] hover:bg-white/[0.06] transition-colors" title="Cancel">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 border border-[var(--line)] rounded-[var(--r-sm)] px-3 py-2.5 bg-[var(--surface-1)] group/row">
+      <div className="min-w-0 flex-1">
+        <p className="text-[12.5px] text-[var(--text)] leading-snug truncate">
+          {g.name}
+          {g.sharedFromName && (
+            <span className="num text-[9.5px] text-[var(--text-4)] ml-1.5">· shared via {g.sharedFromName}</span>
+          )}
+        </p>
+        <p className="num text-[10.5px] text-[var(--text-4)] mt-0.5">
+          {latest ? `${fmt(latest.value)}${g.target != null ? ` of ${fmt(g.target)}` : ""}` : "no readings yet"}
+        </p>
+      </div>
+      {onRecorded && (
+        <button
+          onClick={() => setRecording(true)}
+          className="p-1 rounded-md text-[var(--text-4)] hover:text-[var(--accent)] hover:bg-white/[0.06] transition-colors opacity-60 group-hover/row:opacity-100"
+          title={`Record a ${g.frequency} value`}
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {st ? (
+        <Pill tone={st}>{st === "up" ? "on track" : st === "warn" ? "watch" : "off track"}</Pill>
+      ) : (
+        <Pill tone="neutral">—</Pill>
+      )}
+    </div>
+  );
+}
+
+function MetricRow({ name, entries, onChanged }: { name: string; entries: Metric[]; onChanged: () => void }) {  const latest = entries[0];
 
   async function remove(id: string) {
     await fetch("/api/team/metrics", {

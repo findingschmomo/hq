@@ -3,24 +3,28 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/kpis?category=fundraising
-// Returns KPIs with their 12 most recent readings.
+// GET /api/goals?category=fundraising&scope=mine|team|all
+// Returns goals with their 12 most recent readings. ownerId == null → personal goal.
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const category = searchParams.get("category");
+  const scope = searchParams.get("scope"); // mine | team | all
 
-  const kpis = await prisma.kpi.findMany({
+  const goals = await prisma.kpi.findMany({
     where: {
       archived: false,
       ...(category ? { category } : {}),
+      ...(scope === "mine" ? { ownerId: null } : {}),
+      ...(scope === "team" ? { ownerId: { not: null } } : {}),
     },
     orderBy: [{ category: "asc" }, { name: "asc" }],
     include: {
       readings: { orderBy: { periodStart: "desc" }, take: 12 },
+      ownerRef: { select: { id: true, name: true } },
     },
   });
 
-  return NextResponse.json({ kpis });
+  return NextResponse.json({ goals });
 }
 
 export async function POST(req: Request) {
@@ -29,7 +33,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "name required" }, { status: 400 });
   }
 
-  const kpi = await prisma.kpi.create({
+  const goal = await prisma.kpi.create({
     data: {
       name: body.name.trim(),
       description: body.description || null,
@@ -39,10 +43,13 @@ export async function POST(req: Request) {
       direction: body.direction || "up",
       frequency: body.frequency || "monthly",
       owner: body.owner || null,
+      // explicit null = personal goal; a stale empty string is normalized away
+      ownerId: body.ownerId ? String(body.ownerId) : null,
     },
+    include: { ownerRef: { select: { id: true, name: true } } },
   });
 
-  return NextResponse.json(kpi);
+  return NextResponse.json(goal);
 }
 
 export async function PATCH(req: Request) {
@@ -55,10 +62,11 @@ export async function PATCH(req: Request) {
   }
   if ("target" in updates) data.target = updates.target === null || updates.target === "" ? null : Number(updates.target);
   if ("archived" in updates) data.archived = Boolean(updates.archived);
+  if ("ownerId" in updates) data.ownerId = updates.ownerId ? String(updates.ownerId) : null;
 
   try {
-    const kpi = await prisma.kpi.update({ where: { id }, data });
-    return NextResponse.json(kpi);
+    const goal = await prisma.kpi.update({ where: { id }, data });
+    return NextResponse.json(goal);
   } catch {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }

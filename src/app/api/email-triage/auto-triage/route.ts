@@ -314,6 +314,7 @@ async function applyCurrentBatch(): Promise<Record<string, unknown>> {
               priority: prioRaw === "high" ? "High" : prioRaw === "low" ? "Low" : "Medium",
               status: "Not started",
               dueDate: taskDue,
+              sourceEmailId: email.id,
             },
           });
           pipeline.tasksCreated++;

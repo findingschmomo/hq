@@ -1,0 +1,16 @@
+<svg viewBox="0 0 400 700" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Heights H logo">
+  <defs>
+    <linearGradient id="hGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F7C948"/>
+      <stop offset="18%" stop-color="#F2B80D"/>
+      <stop offset="48%" stop-color="#E88A0A"/>
+      <stop offset="100%" stop-color="#DC4A16"/>
+    </linearGradient>
+  </defs>
+  <!-- Right stem + arrow (transparent bg) -->
+  <path d="M200 0 L310 130 L235 130 L235 680 L165 680 L165 130 L90 130 Z" fill="url(#hGrad)"/>
+  <!-- Left stem -->
+  <rect x="20" y="180" width="70" height="500" fill="url(#hGrad)"/>
+  <!-- Middle bar -->
+  <rect x="20" y="330" width="215" height="40" fill="url(#hGrad)"/>
+</svg>

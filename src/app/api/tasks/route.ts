@@ -11,7 +11,10 @@ export async function GET(req: Request) {
     where: delegateeId ? { delegateeId } : undefined,
     orderBy: [{ status: "asc" }, { priority: "asc" }, { createdAt: "desc" }],
     take: 200,
-    include: { delegatee: { select: { id: true, name: true, organization: true } } },
+    include: {
+      delegatee: { select: { id: true, name: true, organization: true } },
+      sourceEmail: { select: { gmailId: true, subject: true } },
+    },
   });
   return NextResponse.json({ tasks });
 }
@@ -40,12 +43,46 @@ export async function PATCH(req: Request) {
   const { id, ...updates } = await req.json();
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
+  const validPriorities = ["High", "Medium", "Low"];
+  // Safety net: if client sends garbage (like a task ID) in priority, ignore it
+  if ("priority" in updates) {
+    const p = updates.priority as string;
+    if (!validPriorities.includes(p)) {
+      // Silently ignore invalid priority values (e.g., cached client sending task ID)
+      delete updates.priority;
+    }
+  }
+
   const data: Record<string, unknown> = {};
   for (const key of ["name", "status", "priority", "category"]) {
     if (key in updates) data[key] = updates[key];
   }
-  if ("dueDate" in updates) data.dueDate = updates.dueDate ? new Date(updates.dueDate) : null;
-  if ("delegateeId" in updates) data.delegateeId = updates.delegateeId || null;
+  if ("dueDate" in updates) {
+    if (updates.dueDate) {
+      const parsed = new Date(updates.dueDate as string);
+      if (isNaN(parsed.getTime())) {
+        // Silently ignore invalid dueDate
+      } else {
+        data.dueDate = parsed;
+      }
+    } else {
+      data.dueDate = null;
+    }
+  }
+  // Validate delegateeId exists before setting
+  if ("delegateeId" in updates) {
+    const delegateeId = updates.delegateeId as string;
+    if (delegateeId && delegateeId.startsWith("cmt")) {
+      // Validate it's a real stakeholder
+      const stakeholder = await prisma.stakeholder.findUnique({ where: { id: delegateeId } });
+      if (stakeholder) {
+        data.delegateeId = delegateeId;
+      }
+      // else silently ignore invalid delegateeId
+    } else {
+      data.delegateeId = delegateeId || null;
+    }
+  }
   if ("blockedReason" in updates) data.blockedReason = updates.blockedReason?.trim() ? updates.blockedReason.trim().slice(0, 1000) : null;
 
   // moving a task out of Blocked clears the reason unless a new one is supplied

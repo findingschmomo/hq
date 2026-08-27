@@ -198,7 +198,7 @@ function walkMd(dir, out = []) {
   try { items = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
   for (const it of items) {
     const full = path.join(dir, it.name);
-    if (it.isDirectory()) { if (it.name !== ".git") walkMd(full, out); }
+    if (it.isDirectory()) { if (!it.name.startsWith(".")) walkMd(full, out); }
     else if (it.name.endsWith(".md") && it.name !== "INDEX.md") out.push(full);
   }
   return out;

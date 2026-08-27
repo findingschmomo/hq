@@ -10,11 +10,12 @@ import {
   ClipboardList,
   Cpu,
   Inbox,
-  BarChart3,
+  Target,
   Users,
   Menu,
   X,
   CalendarDays,
+  Mail,
 } from "lucide-react";
 import { AGENT_NAME } from "@/lib/agent-name";
 
@@ -32,7 +33,8 @@ const navGroups = [
     items: [
       { href: "/email-triage", label: "Email Triage", icon: Inbox },
       { href: "/calendar", label: "Calendar", icon: CalendarDays },
-      { href: "/kpis", label: "KPIs", icon: BarChart3 },
+      { href: "/weekly", label: "Weekly Update", icon: Mail },
+      { href: "/goals", label: "Goals", icon: Target },
       { href: "/people", label: "People", icon: Users },
       { href: "/team", label: "My Team", icon: Users },
       { href: "/ideas", label: "Ideas", icon: Lightbulb },
@@ -50,7 +52,7 @@ const navGroups = [
 const mobileTabsRaw = [
   { href: "/", label: "Dashboard", icon: Home },
   { href: "/email-triage", label: "Inbox", icon: Inbox },
-  { href: "/kpis", label: "KPIs", icon: BarChart3 },
+  { href: "/goals", label: "Goals", icon: Target },
   { href: "/people", label: "People", icon: Users },
   { href: "/hermes", label: AGENT_NAME, icon: Cpu },
 ];

@@ -47,7 +47,7 @@ export async function GET() {
       take: 6,
     }),
     prisma.emailItem.findMany({
-      where: { status: { in: ["triage", "in_progress"] } },
+      where: { status: "triage" },
       orderBy: [{ priority: "asc" }, { receivedAt: "desc" }],
       take: 5,
     }),

@@ -125,7 +125,7 @@ export function HermesBriefing() {
                     <Eyebrow className="!text-[9.5px]">{s.label}</Eyebrow>
                   </div>
                   <div>
-                    {s.items.map((item, j) => (
+                    {(s.items ?? []).map((item, j) => (
                       <div key={j} className="flex gap-2.5 py-1.5 border-b border-[var(--line)] last:border-0">
                         <span className="text-[var(--text-4)] shrink-0 pt-0.5 text-[12px]">·</span>
                         <p className="flex-1 text-[13px] leading-snug text-[var(--text-2)]">{item}</p>

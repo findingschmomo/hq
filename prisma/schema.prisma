@@ -341,10 +341,10 @@ model WeeklyUpdate {
   upcomingManual String? @db.Text // manual Upcoming Events override (supplements calendar)
   calendarId     String? // selected Google Calendar for Upcoming Events (e.g. Programming Calendar)
   calendarName   String? // cached display name of selected calendar
-  hiddenEventIds Json? // string[] of Google Calendar event IDs hidden for this week
-  sideImageUrl   String? // picture for right column above priorities
-  sideImagePos   String? @default("50% 50%") // object-position for side image (e.g. "30% 20%")
-  sideImageScale Int?    @default(100) // zoom % 50-200
+  hiddenEventIds  Json?    // string[] of Google Calendar event IDs hidden for this week
+  sideImageUrl    String?  @db.Text                // picture for right column above priorities (URL or data:image/*)
+  sideImagePos    String?  @default("50% 50%")      // object-position for side image (e.g. "30% 20%")
+  sideImageScale  Int?     @default(100)            // zoom % 50-200
 
   @@unique([weekOf])
   @@index([status])

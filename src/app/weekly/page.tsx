@@ -345,7 +345,7 @@ export default function WeeklyPage() {
 
           {/* Right column — picture + priorities */}
           <div style={{ backgroundColor: "#D9780A", padding: 0 }} className="flex flex-col">
-            {/* Picture space above priorities — scalable & draggable */}
+            {/* Picture space above priorities — upload or URL, scalable & draggable */}
             <div style={{ padding: "8px 8px 0 8px", backgroundColor: "#D9780A" }}>
               {sideImageUrl ? (
                 <div className="space-y-2">
@@ -381,7 +381,40 @@ export default function WeeklyPage() {
                       onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
                     />
                     <div className="absolute inset-0 pointer-events-none border-[12px] border-transparent" />
-                    <input value={sideImageUrl} onChange={(e) => setSideImageUrl(e.target.value)} placeholder="Paste image URL…" className="absolute bottom-1.5 left-1.5 right-1.5 bg-black/60 backdrop-blur text-white text-[11px] rounded px-2 py-1 border border-white/20 placeholder:text-white/60 focus:outline-none pointer-events-auto" />
+                    <label className="absolute bottom-1.5 left-1.5 right-1.5 bg-black/60 backdrop-blur text-white text-[11px] rounded px-2 py-1 border border-white/20 pointer-events-auto flex items-center justify-between gap-2 cursor-pointer">
+                      <span className="truncate">{sideImageUrl.startsWith("data:") ? "Uploaded image" : sideImageUrl}</span>
+                      <span className="shrink-0 bg-white/20 rounded px-1.5 py-0.5">Change</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          if (f.size > 4 * 1024 * 1024) { alert("Image must be under 4MB"); return; }
+                          const img = new window.Image();
+                          img.onload = () => {
+                            const max = 800;
+                            let { width, height } = img;
+                            if (width > max || height > max) {
+                              const scale = Math.min(max / width, max / height);
+                              width = Math.round(width * scale);
+                              height = Math.round(height * scale);
+                            }
+                            const canvas = document.createElement("canvas");
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext("2d");
+                            if (!ctx) return;
+                            ctx.drawImage(img, 0, 0, width, height);
+                            setSideImageUrl(canvas.toDataURL("image/jpeg", 0.8));
+                          };
+                          const r = new FileReader();
+                          r.onload = () => { img.src = r.result as string; };
+                          r.readAsDataURL(f);
+                        }}
+                      />
+                    </label>
                   </div>
                   <div className="bg-white/90 rounded-[8px] p-2 space-y-2 border border-white/60">
                     <div className="flex items-center gap-2">
@@ -389,6 +422,43 @@ export default function WeeklyPage() {
                       <input type="range" min={50} max={200} value={sideImageScale} onChange={(e) => setSideImageScale(parseInt(e.target.value))} className="flex-1 accent-[#0F1F3C]" />
                       <span className="text-[10px] text-[#6b7280] w-8">{sideImageScale}%</span>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <label className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-black/10 rounded px-2 py-1 text-[11px] text-[#374151] cursor-pointer hover:bg-gray-50">
+                        <span>Upload new</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (!f) return;
+                            if (f.size > 4 * 1024 * 1024) { alert("Image must be under 4MB"); return; }
+                            const img = new window.Image();
+                            img.onload = () => {
+                              const max = 800;
+                              let { width, height } = img;
+                              if (width > max || height > max) {
+                                const scale = Math.min(max / width, max / height);
+                                width = Math.round(width * scale);
+                                height = Math.round(height * scale);
+                              }
+                              const canvas = document.createElement("canvas");
+                              canvas.width = width;
+                              canvas.height = height;
+                              const ctx = canvas.getContext("2d");
+                              if (!ctx) return;
+                              ctx.drawImage(img, 0, 0, width, height);
+                              setSideImageUrl(canvas.toDataURL("image/jpeg", 0.8));
+                            };
+                            const r = new FileReader();
+                            r.onload = () => { img.src = r.result as string; };
+                            r.readAsDataURL(f);
+                          }}
+                        />
+                      </label>
+                      <span className="text-[10px] text-[#9ca3af]">or paste URL below</span>
+                    </div>
+                    <input value={sideImageUrl.startsWith("data:") ? "" : sideImageUrl} onChange={(e) => setSideImageUrl(e.target.value)} placeholder="https://… paste image URL" className="w-full bg-white text-[11px] rounded px-2 py-1.5 border border-black/10 placeholder:text-black/40 focus:outline-none" />
                     <div className="text-[10px] text-[#9ca3af] text-center">Drag image to reposition • Use slider to zoom</div>
                   </div>
                 </div>
@@ -396,7 +466,41 @@ export default function WeeklyPage() {
                 <div className="w-full min-h-[120px] flex flex-col items-center justify-center p-3 rounded-[12px] bg-white border-[3px] border-white">
                   <span className="text-[11px] text-[#6b7280]">Picture for right column</span>
                   <span className="text-[10px] text-[#9ca3af]">Above priorities</span>
-                  <input value={sideImageUrl} onChange={(e) => setSideImageUrl(e.target.value)} placeholder="https://… paste image URL" className="mt-2 w-full bg-white text-[11px] rounded px-2 py-1.5 border border-black/10 placeholder:text-black/40 focus:outline-none" />
+                  <label className="mt-2 w-full flex items-center justify-center gap-2 bg-[var(--accent)] text-white text-[11px] rounded px-3 py-1.5 cursor-pointer hover:bg-[var(--accent)]/90">
+                    <span>Upload image</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        if (f.size > 4 * 1024 * 1024) { alert("Image must be under 4MB"); return; }
+                        const img = new window.Image();
+                        img.onload = () => {
+                          const max = 800;
+                          let { width, height } = img;
+                          if (width > max || height > max) {
+                            const scale = Math.min(max / width, max / height);
+                            width = Math.round(width * scale);
+                            height = Math.round(height * scale);
+                          }
+                          const canvas = document.createElement("canvas");
+                          canvas.width = width;
+                          canvas.height = height;
+                          const ctx = canvas.getContext("2d");
+                          if (!ctx) return;
+                          ctx.drawImage(img, 0, 0, width, height);
+                          setSideImageUrl(canvas.toDataURL("image/jpeg", 0.8));
+                        };
+                        const r = new FileReader();
+                        r.onload = () => { img.src = r.result as string; };
+                        r.readAsDataURL(f);
+                      }}
+                    />
+                  </label>
+                  <div className="text-[10px] text-[#9ca3af] mt-1">or</div>
+                  <input value={sideImageUrl} onChange={(e) => setSideImageUrl(e.target.value)} placeholder="https://… paste image URL" className="mt-1 w-full bg-white text-[11px] rounded px-2 py-1.5 border border-black/10 placeholder:text-black/40 focus:outline-none" />
                 </div>
               )}
             </div>

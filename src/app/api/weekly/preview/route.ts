@@ -28,6 +28,8 @@ export async function GET(req: Request) {
     const sideImageUrl = data.sideImageUrl ?? "";
     const sideImagePos = data.sideImagePos ?? "50% 50%";
     const sideImageScale = data.sideImageScale ?? 100;
+    const sideImageCaption = data.sideImageCaption ?? "";
+    const kudosText = data.kudosText ?? "";
 
     const html = renderWeeklyHtml(data, curriculumText, introText, gifUrl);
     const text = renderWeeklyText(data, curriculumText, introText, gifUrl);
@@ -51,6 +53,8 @@ export async function GET(req: Request) {
       sideImageUrl,
       sideImagePos,
       sideImageScale,
+      sideImageCaption,
+      kudosText,
       calendarId: data.calendarId,
       calendarName: data.calendarName,
       hiddenEventIds: data.hiddenEventIds,

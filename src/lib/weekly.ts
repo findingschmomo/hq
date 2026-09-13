@@ -48,6 +48,8 @@ export interface CompiledWeeklyData {
   sideImageUrl: string | null;
   sideImagePos: string | null;
   sideImageScale: number | null;
+  sideImageCaption: string | null;
+  kudosText: string | null;
   calendarId: string | null;
   calendarName: string | null;
   hiddenEventIds: string[];
@@ -199,6 +201,8 @@ export async function compileWeeklyData(weekOf?: Date, scopePod?: string | null)
       sideImageUrl: true,
       sideImagePos: true,
       sideImageScale: true,
+      sideImageCaption: true,
+      kudosText: true,
       calendarId: true,
       calendarName: true,
       hiddenEventIds: true,
@@ -248,6 +252,8 @@ export async function compileWeeklyData(weekOf?: Date, scopePod?: string | null)
       sideImageUrl: true,
       sideImagePos: true,
       sideImageScale: true,
+      sideImageCaption: true,
+      kudosText: true,
       calendarId: true,
       calendarName: true,
       personalNote: true,
@@ -276,6 +282,8 @@ export async function compileWeeklyData(weekOf?: Date, scopePod?: string | null)
     sideImageUrl: pick(stored?.sideImageUrl, lastUpdate?.sideImageUrl) ?? null,
     sideImagePos: stored?.sideImagePos ?? lastUpdate?.sideImagePos ?? "50% 50%",
     sideImageScale: stored?.sideImageScale ?? lastUpdate?.sideImageScale ?? 100,
+    sideImageCaption: pick(stored?.sideImageCaption, lastUpdate?.sideImageCaption) ?? null,
+    kudosText: pick(stored?.kudosText, lastUpdate?.kudosText) ?? null,
     calendarId: stored?.calendarId ?? lastUpdate?.calendarId ?? null,
     calendarName: stored?.calendarName ?? lastUpdate?.calendarName ?? null,
     hiddenEventIds: [...hiddenIds],
@@ -328,6 +336,8 @@ export function renderWeeklyHtml(data: CompiledWeeklyData, curriculumText: strin
   const upcomingManual = (data.upcomingManual ?? "").trim();
   const importantLinks = (data.importantLinks ?? "").trim();
   const prioritiesOverride = (data.prioritiesText ?? "").trim();
+  const sideImageCaption = (data.sideImageCaption ?? "").trim();
+  const kudosOverride = (data.kudosText ?? "").trim();
 
   const weekLabel = data.weekOf.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   const hasIntro = intro.length > 0;
@@ -453,12 +463,12 @@ export function renderWeeklyHtml(data: CompiledWeeklyData, curriculumText: strin
                   <!-- Right column -->
                   <td style="width:52%; vertical-align:top; padding:0; background-color:#D9780A;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                      <!-- Side picture above priorities — scalable & positionable -->
+                      <!-- Side picture above priorities — scalable & positionable + caption -->
                       <tr>
                         <td style="padding:8px 8px 0 8px; background-color:#D9780A; text-align:center;">
                           ${
                             data.sideImageUrl
-                              ? `<div style="border-radius:12px; border:3px solid #ffffff; overflow:hidden; height:180px; background-color:#ffffff;"><img src="${escapeHtml(data.sideImageUrl)}" alt="Right column image" style="display:block; width:100%; height:100%; object-fit:cover; object-position:${escapeHtml(data.sideImagePos || "50% 50%")}; transform:scale(${(data.sideImageScale || 100)/100}); transform-origin:${escapeHtml(data.sideImagePos || "50% 50%")};"></div>`
+                              ? `<div style="border-radius:12px; border:3px solid #ffffff; overflow:hidden; height:180px; background-color:#ffffff;"><img src="${escapeHtml(data.sideImageUrl)}" alt="Right column image" style="display:block; width:100%; height:100%; object-fit:cover; object-position:${escapeHtml(data.sideImagePos || "50% 50%")}; transform:scale(${(data.sideImageScale || 100)/100}); transform-origin:${escapeHtml(data.sideImagePos || "50% 50%")};"></div>${sideImageCaption ? `<div style="font-family:Arial,Helvetica,sans-serif; font-size:11px; color:#ffffff; text-align:center; padding:6px 8px 0 8px; line-height:1.4; font-style:italic;">${escapeHtml(sideImageCaption)}</div>` : ""}`
                               : `<div style="background-color:#ffffff; border-radius:12px; border:3px solid #ffffff; min-height:120px; display:flex; align-items:center; justify-content:center; font-family:Arial,Helvetica,sans-serif; font-size:11px; color:#6b7280; text-align:center; padding:12px;"><span>Picture for right column<br><span style="font-size:10px;">Paste image URL in editor</span></span></div>`
                           }
                         </td>
@@ -481,6 +491,25 @@ export function renderWeeklyHtml(data: CompiledWeeklyData, curriculumText: strin
                           </table>
                           <!-- Clownfish (transparent) — larger, fills orange -->
                           <div style="text-align:left; padding:8px 0 12px 14px; line-height:1; margin-top:-2px;"><img src="${FISH_DATA_URI}" alt="clownfish" width="84" height="50" style="display:inline-block; border:0; vertical-align:middle; width:84px; height:auto; max-width:42%;" /></div>
+                        </td>
+                      </tr>
+                      <!-- Kudos Korner — below priorities -->
+                      <tr>
+                        <td style="padding:0 10px 10px 10px; background-color:#D9780A;">
+                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#FBBF24; border-radius:14px; border:3px solid #ffffff;">
+                            <tr>
+                              <td style="padding:12px 14px 14px 14px;">
+                                <div style="font-family:'Arial Black',Arial,Helvetica,sans-serif; font-size:13px; font-weight:900; color:#0F1F3C; text-align:center; letter-spacing:0.3px; margin-bottom:8px;">🏆 KUDOS KORNER 🏆</div>
+                                <div style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#1e293b; line-height:1.5; background-color:rgba(255,255,255,0.45); border-radius:8px; padding:8px 10px;">${kudosOverride ? richTextToHtml(kudosOverride, { linkColor: "#0F1F3C" }) : `<span style="color:#6b7280; font-style:italic;">Add a shout-out for your team…</span>`}</div>
+                              </td>
+                            </tr>
+                            <!-- bubble pointer -->
+                            <tr>
+                              <td style="padding:0 0 0 28px; height:14px; line-height:0;">
+                                <div style="width:0; height:0; border-left:14px solid transparent; border-right:14px solid transparent; border-top:14px solid #FBBF24; margin:0;"></div>
+                              </td>
+                            </tr>
+                          </table>
                         </td>
                       </tr>
                     </table>
@@ -551,6 +580,15 @@ export function renderWeeklyText(data: CompiledWeeklyData, curriculumText: strin
     }
   }
   txt += "\n";
+
+  txt += "KUDOS KORNER\n";
+  txt += data.kudosText ? `  ${data.kudosText}\n` : "  (none)\n\n";
+
+  if (data.sideImageUrl) {
+    txt += `Side image: ${data.sideImageUrl}\n`;
+    if (data.sideImageCaption) txt += `  ${data.sideImageCaption}\n`;
+    txt += "\n";
+  }
 
   if (data.calendarName) txt += `Calendar: ${data.calendarName}\n`;
 

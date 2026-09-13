@@ -27,6 +27,7 @@ interface WeeklyData {
   sideImageUrl: string;
   sideImagePos: string;
   sideImageScale: number;
+  sideImageCaption: string;
   calendarId: string | null;
   calendarName: string | null;
   hiddenEventIds: string[];
@@ -44,11 +45,12 @@ export default function WeeklyPage() {
   const [dataAsks, setDataAsks] = useState("");
   const [importantLinks, setImportantLinks] = useState("");
   const [prioritiesText, setPrioritiesText] = useState("");
-  const [upcomingManual, setUpcomingManual] = useState("");
   const [gifUrl, setGifUrl] = useState("");
   const [sideImageUrl, setSideImageUrl] = useState("");
   const [sideImagePos, setSideImagePos] = useState("50% 50%");
   const [sideImageScale, setSideImageScale] = useState(100);
+  const [sideImageCaption, setSideImageCaption] = useState("");
+  const [kudosText, setKudosText] = useState("");
   const [calendarId, setCalendarId] = useState<string | null>(null);
   const [calendarName, setCalendarName] = useState<string | null>(null);
   const [hiddenEventIds, setHiddenEventIds] = useState<string[]>([]);
@@ -60,8 +62,8 @@ export default function WeeklyPage() {
 
   const loadedRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latestRef = useRef({ introText: "", curriculumText: "", dataAsks: "", importantLinks: "", prioritiesText: "", upcomingManual: "", gifUrl: "", sideImageUrl: "", sideImagePos: "50% 50%", sideImageScale: 100, calendarId: null as string | null, calendarName: null as string | null, hiddenEventIds: [] as string[] });
-  latestRef.current = { introText, curriculumText, dataAsks, importantLinks, prioritiesText, upcomingManual, gifUrl, sideImageUrl, sideImagePos, sideImageScale, calendarId, calendarName, hiddenEventIds };
+  const latestRef = useRef({ introText: "", curriculumText: "", dataAsks: "", importantLinks: "", prioritiesText: "", gifUrl: "", sideImageUrl: "", sideImagePos: "50% 50%", sideImageScale: 100, sideImageCaption: "", kudosText: "", calendarId: null as string | null, calendarName: null as string | null, hiddenEventIds: [] as string[] });
+  latestRef.current = { introText, curriculumText, dataAsks, importantLinks, prioritiesText, gifUrl, sideImageUrl, sideImagePos, sideImageScale, sideImageCaption, kudosText, calendarId, calendarName, hiddenEventIds };
 
   async function saveNotes() {
     try {
@@ -85,7 +87,7 @@ export default function WeeklyPage() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(saveNotes, 900);
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-  }, [introText, curriculumText, dataAsks, importantLinks, prioritiesText, upcomingManual, gifUrl, sideImageUrl, sideImagePos, sideImageScale, calendarId, calendarName, hiddenEventIds]);
+  }, [introText, curriculumText, dataAsks, importantLinks, prioritiesText, gifUrl, sideImageUrl, sideImagePos, sideImageScale, sideImageCaption, kudosText, calendarId, calendarName, hiddenEventIds]);
 
   useEffect(() => {
     function flush() {
@@ -112,11 +114,12 @@ export default function WeeklyPage() {
       setDataAsks(json.dataAsks || "");
       setImportantLinks(json.importantLinks || "");
       setPrioritiesText(json.prioritiesText || "");
-      setUpcomingManual(json.upcomingManual || "");
       setGifUrl(json.gifUrl || "");
       setSideImageUrl(json.sideImageUrl || "");
       setSideImagePos(json.sideImagePos || "50% 50%");
       setSideImageScale(json.sideImageScale || 100);
+      setSideImageCaption(json.sideImageCaption || "");
+      setKudosText(json.kudosText || "");
       setCalendarId(json.calendarId || null);
       setCalendarName(json.calendarName || null);
       setHiddenEventIds(json.hiddenEventIds || []);
@@ -162,11 +165,12 @@ export default function WeeklyPage() {
           dataAsks,
           importantLinks,
           prioritiesText,
-          upcomingManual,
           gifUrl,
           sideImageUrl,
           sideImagePos,
           sideImageScale,
+          sideImageCaption,
+          kudosText,
           calendarId,
           calendarName,
           hiddenEventIds,
@@ -331,7 +335,6 @@ export default function WeeklyPage() {
                 ) : (
                   <p className="text-[11px] text-white/40 italic mb-2">No events from {calendarName || "selected calendar"} — they&apos;ll appear here when scheduled.</p>
                 )}
-                <textarea value={upcomingManual} onChange={(e) => setUpcomingManual(e.target.value)} rows={2} placeholder="Add manual events / notes…" className="w-full bg-white/10 border border-white/15 rounded-[6px] px-3 py-2 text-white text-[12.5px] placeholder:text-white/40 focus:outline-none focus:border-[#E88A1A] resize-y" />
               </div>
 
               <div>
@@ -459,6 +462,7 @@ export default function WeeklyPage() {
                       <span className="text-[10px] text-[#9ca3af]">or paste URL below</span>
                     </div>
                     <input value={sideImageUrl.startsWith("data:") ? "" : sideImageUrl} onChange={(e) => setSideImageUrl(e.target.value)} placeholder="https://… paste image URL" className="w-full bg-white text-[11px] rounded px-2 py-1.5 border border-black/10 placeholder:text-black/40 focus:outline-none" />
+                    <input value={sideImageCaption} onChange={(e) => setSideImageCaption(e.target.value)} placeholder="Caption (one line) — under the photo" className="w-full bg-white text-[11px] rounded px-2 py-1.5 border border-black/10 placeholder:text-black/40 focus:outline-none" />
                     <div className="text-[10px] text-[#9ca3af] text-center">Drag image to reposition • Use slider to zoom</div>
                   </div>
                 </div>
@@ -501,6 +505,7 @@ export default function WeeklyPage() {
                   </label>
                   <div className="text-[10px] text-[#9ca3af] mt-1">or</div>
                   <input value={sideImageUrl} onChange={(e) => setSideImageUrl(e.target.value)} placeholder="https://… paste image URL" className="mt-1 w-full bg-white text-[11px] rounded px-2 py-1.5 border border-black/10 placeholder:text-black/40 focus:outline-none" />
+                  <input value={sideImageCaption} onChange={(e) => setSideImageCaption(e.target.value)} placeholder="Caption (one line) — under the photo" className="mt-1 w-full bg-white text-[11px] rounded px-2 py-1.5 border border-black/10 placeholder:text-black/40 focus:outline-none" />
                 </div>
               )}
             </div>
@@ -547,6 +552,21 @@ export default function WeeklyPage() {
               <div style={{ padding: "6px 0 8px 14px", lineHeight: 1, flex: 1, display: "flex", alignItems: "flex-start" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/fish.png" alt="clownfish" width={fishWidth} height={fishWidth} style={{ display: "block", width: fishWidth, height: "auto", maxWidth: "140px", transition: "width 0.2s ease" }} />
+              </div>
+
+              {/* Kudos Korner — right underneath priorities */}
+              <div style={{ paddingBottom: 10 }}>
+                <div style={{ backgroundColor: "#FBBF24", borderRadius: 14, border: "3px solid #ffffff", padding: "12px 14px 12px 14px" }}>
+                  <div style={{ fontFamily: "'Arial Black', Arial, sans-serif", fontSize: 13, fontWeight: 900, color: "#0F1F3C", letterSpacing: 0.3, textAlign: "center" as const, marginBottom: 8 }}>🏆 KUDOS KORNER 🏆</div>
+                  <textarea
+                    value={kudosText}
+                    onChange={(e) => setKudosText(e.target.value)}
+                    rows={4}
+                    placeholder="Shout-outs, wins, celebrations for the team…"
+                    className="w-full bg-white/55 rounded-[8px] px-3 py-2 text-[12.5px] text-[#1e293b] placeholder:text-[#64748b] border border-white/60 focus:outline-none focus:border-white focus:bg-white/75 resize-y"
+                  />
+                </div>
+                <div style={{ marginLeft: 18, width: 0, height: 0, borderLeft: "12px solid transparent", borderRight: "12px solid transparent", borderTop: "12px solid #FBBF24" }} />
               </div>
             </div>
           </div>

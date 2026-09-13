@@ -24,6 +24,8 @@ export async function POST(req: Request) {
       sideImageUrl,
       sideImagePos,
       sideImageScale,
+      sideImageCaption,
+      kudosText,
       calendarId,
       calendarName,
       hiddenEventIds,
@@ -52,6 +54,8 @@ export async function POST(req: Request) {
     if (typeof sideImageUrl === "string") data.sideImageUrl = sideImageUrl;
     if (typeof sideImagePos === "string") data.sideImagePos = sideImagePos;
     if (typeof sideImageScale === "number") data.sideImageScale = sideImageScale;
+    if (typeof sideImageCaption === "string") data.sideImageCaption = sideImageCaption;
+    if (typeof kudosText === "string") data.kudosText = kudosText;
     if (typeof calendarId === "string") data.calendarId = calendarId || null;
     if (typeof calendarName === "string") data.calendarName = calendarName || null;
     if (Array.isArray(hiddenEventIds)) data.hiddenEventIds = hiddenEventIds;

@@ -345,6 +345,8 @@ model WeeklyUpdate {
   sideImageUrl    String?  @db.Text                // picture for right column above priorities (URL or data:image/*)
   sideImagePos    String?  @default("50% 50%")      // object-position for side image (e.g. "30% 20%")
   sideImageScale  Int?     @default(100)            // zoom % 50-200
+  sideImageCaption String? @db.Text                // one-line caption for side image
+  kudosText       String?  @db.Text                // Kudos Korner bubble content (under priorities)
 
   @@unique([weekOf])
   @@index([status])

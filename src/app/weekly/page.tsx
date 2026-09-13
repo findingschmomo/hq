@@ -58,7 +58,6 @@ export default function WeeklyPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "dirty" | "saving" | "saved">("idle");
-  const [fishWidth, setFishWidth] = useState(96);
 
   const loadedRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -196,13 +195,6 @@ export default function WeeklyPage() {
   }
 
   const autoPrioritiesPreview = data?.priorities.map((t) => `• ${t.name}${t.dueDate ? ` — ${new Date(t.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : ""}`).join("\n") || "";
-
-  // Fish scales with the bubble — more priorities → bigger fish to fill the orange
-  useEffect(() => {
-    const text = prioritiesText !== "" ? prioritiesText : autoPrioritiesPreview;
-    const lines = text.split("\n").filter((l) => l.trim().length > 0).length;
-    setFishWidth(Math.min(140, Math.max(64, 72 + lines * 14)));
-  }, [prioritiesText, autoPrioritiesPreview]);
 
   const [podScope, setPodScope] = useState<string>("Pod 1");
   useEffect(() => { fetchPreview(); fetchCalendars(); }, []);
@@ -510,7 +502,7 @@ export default function WeeklyPage() {
               )}
             </div>
 
-            {/* Yellow priorities bubble — fish scales with this */}
+            {/* Yellow priorities bubble */}
             <div style={{ padding: "10px 10px 6px 10px", flex: 1, display: "flex", flexDirection: "column" as const }}>
               <div style={{ backgroundColor: "#FBBF24", borderRadius: 14, border: "3px solid #ffffff", padding: "12px 14px 12px 14px" }}>
                 <div className="flex items-center justify-between mb-2">
@@ -549,24 +541,21 @@ export default function WeeklyPage() {
                 </p>
               </div>
               <div style={{ marginLeft: 18, width: 0, height: 0, borderLeft: "12px solid transparent", borderRight: "12px solid transparent", borderTop: "12px solid #FBBF24" }} />
-              <div style={{ padding: "6px 0 8px 14px", lineHeight: 1, flex: 1, display: "flex", alignItems: "flex-start" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/fish.png" alt="clownfish" width={fishWidth} height={fishWidth} style={{ display: "block", width: fishWidth, height: "auto", maxWidth: "140px", transition: "width 0.2s ease" }} />
-              </div>
+              <div style={{ padding: "6px 0 8px 14px", lineHeight: 1, flex: 1 }} />
 
               {/* Kudos Korner — right underneath priorities */}
               <div style={{ paddingBottom: 10 }}>
-                <div style={{ backgroundColor: "#FBBF24", borderRadius: 14, border: "3px solid #ffffff", padding: "12px 14px 12px 14px" }}>
-                  <div style={{ fontFamily: "'Arial Black', Arial, sans-serif", fontSize: 13, fontWeight: 900, color: "#0F1F3C", letterSpacing: 0.3, textAlign: "center" as const, marginBottom: 8 }}>🏆 KUDOS KORNER 🏆</div>
+                <div style={{ backgroundColor: "#0F1F3C", borderRadius: 14, border: "3px solid #ffffff", padding: "12px 14px 12px 14px" }}>
+                  <div style={{ fontFamily: "'Arial Black', Arial, sans-serif", fontSize: 13, fontWeight: 900, color: "#FBBF24", letterSpacing: 0.3, textAlign: "center" as const, marginBottom: 8 }}>🏆 KUDOS KORNER 🏆</div>
                   <textarea
                     value={kudosText}
                     onChange={(e) => setKudosText(e.target.value)}
                     rows={4}
                     placeholder="Shout-outs, wins, celebrations for the team…"
-                    className="w-full bg-white/55 rounded-[8px] px-3 py-2 text-[12.5px] text-[#1e293b] placeholder:text-[#64748b] border border-white/60 focus:outline-none focus:border-white focus:bg-white/75 resize-y"
+                    className="w-full bg-white/10 rounded-[8px] px-3 py-2 text-[12.5px] text-white placeholder:text-white/40 border border-white/15 focus:outline-none focus:border-[#FBBF24] resize-y"
                   />
                 </div>
-                <div style={{ marginLeft: 18, width: 0, height: 0, borderLeft: "12px solid transparent", borderRight: "12px solid transparent", borderTop: "12px solid #FBBF24" }} />
+                <div style={{ marginLeft: 18, width: 0, height: 0, borderLeft: "12px solid transparent", borderRight: "12px solid transparent", borderTop: "12px solid #0F1F3C" }} />
               </div>
             </div>
           </div>

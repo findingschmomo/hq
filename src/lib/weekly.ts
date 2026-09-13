@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { listEvents, CalEvent } from "@/lib/gcal";
 import { H_LOGO_DATA_URI } from "@/lib/hLogo";
-import { FISH_DATA_URI } from "@/lib/fishLogo";
 
 export interface WeeklyRecipient {
   id: string;
@@ -489,24 +488,22 @@ export function renderWeeklyHtml(data: CompiledWeeklyData, curriculumText: strin
                               </td>
                             </tr>
                           </table>
-                          <!-- Clownfish (transparent) — larger, fills orange -->
-                          <div style="text-align:left; padding:8px 0 12px 14px; line-height:1; margin-top:-2px;"><img src="${FISH_DATA_URI}" alt="clownfish" width="84" height="50" style="display:inline-block; border:0; vertical-align:middle; width:84px; height:auto; max-width:42%;" /></div>
                         </td>
                       </tr>
                       <!-- Kudos Korner — below priorities -->
                       <tr>
                         <td style="padding:0 10px 10px 10px; background-color:#D9780A;">
-                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#FBBF24; border-radius:14px; border:3px solid #ffffff;">
+                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#0F1F3C; border-radius:14px; border:3px solid #ffffff;">
                             <tr>
                               <td style="padding:12px 14px 14px 14px;">
-                                <div style="font-family:'Arial Black',Arial,Helvetica,sans-serif; font-size:13px; font-weight:900; color:#0F1F3C; text-align:center; letter-spacing:0.3px; margin-bottom:8px;">🏆 KUDOS KORNER 🏆</div>
-                                <div style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#1e293b; line-height:1.5; background-color:rgba(255,255,255,0.45); border-radius:8px; padding:8px 10px;">${kudosOverride ? richTextToHtml(kudosOverride, { linkColor: "#0F1F3C" }) : `<span style="color:#6b7280; font-style:italic;">Add a shout-out for your team…</span>`}</div>
+                                <div style="font-family:'Arial Black',Arial,Helvetica,sans-serif; font-size:13px; font-weight:900; color:#FBBF24; text-align:center; letter-spacing:0.3px; margin-bottom:8px;">🏆 KUDOS KORNER 🏆</div>
+                                <div style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#ffffff; line-height:1.5; background-color:rgba(255,255,255,0.08); border-radius:8px; padding:8px 10px;">${kudosOverride ? richTextToHtml(kudosOverride, { linkColor: "#ffffff" }) : `<span style="color:#94a3b8; font-style:italic;">Add a shout-out for your team…</span>`}</div>
                               </td>
                             </tr>
                             <!-- bubble pointer -->
                             <tr>
                               <td style="padding:0 0 0 28px; height:14px; line-height:0;">
-                                <div style="width:0; height:0; border-left:14px solid transparent; border-right:14px solid transparent; border-top:14px solid #FBBF24; margin:0;"></div>
+                                <div style="width:0; height:0; border-left:14px solid transparent; border-right:14px solid transparent; border-top:14px solid #0F1F3C; margin:0;"></div>
                               </td>
                             </tr>
                           </table>

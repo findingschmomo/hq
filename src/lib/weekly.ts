@@ -481,16 +481,10 @@ export function renderWeeklyHtml(data: CompiledWeeklyData, curriculumText: strin
                                 <div style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#1e293b; line-height:1.5; background-color:rgba(255,255,255,0.45); border-radius:8px; padding:8px 10px;">${prioritiesHtml}</div>
                               </td>
                             </tr>
-                            <!-- bubble pointer -->
-                            <tr>
-                              <td style="padding:0 0 0 28px; height:14px; line-height:0;">
-                                <div style="width:0; height:0; border-left:14px solid transparent; border-right:14px solid transparent; border-top:14px solid #FBBF24; margin:0;"></div>
-                              </td>
-                            </tr>
                           </table>
                         </td>
                       </tr>
-                      <!-- Kudos Korner — below priorities -->
+                      <!-- Kudos Korner — directly below priorities -->
                       <tr>
                         <td style="padding:0 10px 10px 10px; background-color:#D9780A;">
                           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#0F1F3C; border-radius:14px; border:3px solid #ffffff;">
@@ -498,12 +492,6 @@ export function renderWeeklyHtml(data: CompiledWeeklyData, curriculumText: strin
                               <td style="padding:12px 14px 14px 14px;">
                                 <div style="font-family:'Arial Black',Arial,Helvetica,sans-serif; font-size:13px; font-weight:900; color:#FBBF24; text-align:center; letter-spacing:0.3px; margin-bottom:8px;">🏆 KUDOS KORNER 🏆</div>
                                 <div style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#ffffff; line-height:1.5; background-color:rgba(255,255,255,0.08); border-radius:8px; padding:8px 10px;">${kudosOverride ? richTextToHtml(kudosOverride, { linkColor: "#ffffff" }) : `<span style="color:#94a3b8; font-style:italic;">Add a shout-out for your team…</span>`}</div>
-                              </td>
-                            </tr>
-                            <!-- bubble pointer -->
-                            <tr>
-                              <td style="padding:0 0 0 28px; height:14px; line-height:0;">
-                                <div style="width:0; height:0; border-left:14px solid transparent; border-right:14px solid transparent; border-top:14px solid #0F1F3C; margin:0;"></div>
                               </td>
                             </tr>
                           </table>

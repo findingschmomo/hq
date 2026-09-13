@@ -540,11 +540,7 @@ export default function WeeklyPage() {
                       : "No auto tasks — type priorities manually."}
                 </p>
               </div>
-              <div style={{ marginLeft: 18, width: 0, height: 0, borderLeft: "12px solid transparent", borderRight: "12px solid transparent", borderTop: "12px solid #FBBF24" }} />
-              <div style={{ padding: "6px 0 8px 14px", lineHeight: 1, flex: 1 }} />
-
-              {/* Kudos Korner — right underneath priorities */}
-              <div style={{ paddingBottom: 10 }}>
+              <div style={{ marginTop: 8 }}>
                 <div style={{ backgroundColor: "#0F1F3C", borderRadius: 14, border: "3px solid #ffffff", padding: "12px 14px 12px 14px" }}>
                   <div style={{ fontFamily: "'Arial Black', Arial, sans-serif", fontSize: 13, fontWeight: 900, color: "#FBBF24", letterSpacing: 0.3, textAlign: "center" as const, marginBottom: 8 }}>🏆 KUDOS KORNER 🏆</div>
                   <textarea
@@ -555,7 +551,6 @@ export default function WeeklyPage() {
                     className="w-full bg-white/10 rounded-[8px] px-3 py-2 text-[12.5px] text-white placeholder:text-white/40 border border-white/15 focus:outline-none focus:border-[#FBBF24] resize-y"
                   />
                 </div>
-                <div style={{ marginLeft: 18, width: 0, height: 0, borderLeft: "12px solid transparent", borderRight: "12px solid transparent", borderTop: "12px solid #0F1F3C" }} />
               </div>
             </div>
           </div>
